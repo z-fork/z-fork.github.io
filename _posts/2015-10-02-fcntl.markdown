@@ -13,7 +13,7 @@ os, stat, fcntl
 
 **函数**
 
-* os.open(file, flags[, mode])
+*os.open(file, flags[, mode])*
 
 flags:
 
