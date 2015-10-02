@@ -11,16 +11,13 @@ tags:
 os, stat, fcntl
 ```
 
-```nohighlight
-    os, stat, fcntl
-```
-
 **函数**
 
 1. os.open(file, flags[, mode])
 
 flags:
 
+```nohighlight
     os.O_RDONLY     - 文件以只读方式打开
     os.O_WRONLY     - 文件以只写方式打开
     os.O_RDWR       - 文件以读写方式打开
@@ -28,6 +25,7 @@ flags:
     os.I_TRUNC      - 文件大小截断为0
     os.O_CREAT      - 如果文件不存在, 则创建文件
     os.O_EXCL       - 如果文件存在, 并且指定了 os.O_CREAT, 在os.open 调用会抛出 OSError 异常
+```
 
 * 如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.
 
@@ -36,8 +34,10 @@ flags:
 
 op:
 
+```nohighlight
     F_GETFD         - 获取 fd 的 close-on-exec 标志, 若标志未设置, 则文件经过 exec 函数之后仍保持打开状态
     F_SETFD         - 设置 close-on-exec 标志, 该标志以参数 arg 的 FD_CLOEXEC 位定位
+```
 
 * FD_CLOEXEC 表示程序执行 exec 函数时当前 fd 将被系统自动关闭, 表示不传递给 exec 创建的新进程, 默认情况下文件不关闭.
 
@@ -45,18 +45,22 @@ op:
 
 operation:
 
+```nohighlight
     LOCK_UN         - 解锁.
     LOCK_SH         - 共享锁. 所有进程没有写访问权限，即使是加锁进程也没有。所有进程有读访问权限
     LOCK_EX         - 排他锁. 除加锁进程外其他进程没有对已加锁文件读写访问权限
     LOCK_NB         - 非阻塞锁. 如果指定此参数函数不能获得文件锁就立即返回, 否则, 函数会等待获得文件
+```
 
 length is the number of bytes to lock, start is the byte offset at which the lock starts, relative to whence, and whence is as with io.IOBase.seek()
 
 whence:
 
+```nohighlight
     os.SEEK_SET     - relative to the start of the file
     os.SEEK_CUR     - relative to the current buffer position
     os.SEEK_END     - relative to the end of the file
+```
 
 The default for start is 0, which means to start at the beginning of the file. The default for length is 0 which means to lock to the end of the file. The default for whence is also 0.
 
