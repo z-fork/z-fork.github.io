@@ -13,7 +13,7 @@ os, stat, fcntl
 
 **函数**
 
-1. os.open(file, flags[, mode])
+* os.open(file, flags[, mode])
 
 flags:
 
@@ -30,7 +30,7 @@ flags:
 * 如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.
 
 
-2. fcntl.fcntl(fd, op[, arg])
+- fcntl.fcntl(fd, op[, arg])
 
 op:
 
