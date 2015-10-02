@@ -27,9 +27,9 @@ flags:
     os.O_EXCL       - 如果文件存在, 并且指定了 os.O_CREAT, 在os.open 调用会抛出 OSError 异常
 ```
 
-* 如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.
+*如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.*
 
-### fcntl.fcntl(fd, op[, arg])
+#### fcntl.fcntl(fd, op[, arg])
 
 op:
 
@@ -38,9 +38,9 @@ op:
     F_SETFD         - 设置 close-on-exec 标志, 该标志以参数 arg 的 FD_CLOEXEC 位定位
 ```
 
-* FD_CLOEXEC 表示程序执行 exec 函数时当前 fd 将被系统自动关闭, 表示不传递给 exec 创建的新进程, 默认情况下文件不关闭.
+*FD_CLOEXEC 表示程序执行 exec 函数时当前 fd 将被系统自动关闭, 表示不传递给 exec 创建的新进程, 默认情况下文件不关闭.*
 
-### fcntl.lockf(fd, operation[, length[, start[, whence]]])
+#### fcntl.lockf(fd, operation[, length[, start[, whence]]])
 
 operation:
 
@@ -67,30 +67,30 @@ The default for start is 0, which means to start at the beginning of the file. T
 ### 例子
 
 ```python
-    import os
-    import sys
-    import stat
-    import fcntl
+import os
+import sys
+import stat
+import fcntl
 
-    try:
-        fd = os.open(filename, os.O_RDWR | os.O_CREAT, stat.S_IRUSR | stat.S_IWUSR)
-    except OSError:
-        sys.exit(1)
+try:
+    fd = os.open(filename, os.O_RDWR | os.O_CREAT, stat.S_IRUSR | stat.S_IWUSR)
+except OSError:
+    sys.exit(1)
 
-    flags = fcntl.fcntl(fd, fcntl.F_GETFD)
-    assert flags != -1
+flags = fcntl.fcntl(fd, fcntl.F_GETFD)
+assert flags != -1
 
-    flags = fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
-    assert flags != -1
+flags = fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+assert flags != -1
 
-    try:
-        # 有要lock部分的时候? 居然提供length & start.
-        # fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB, 0, 0, os.SEEK_SET)
-        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError:
-        os.close(fd)
-        sys.exit(1)
+try:
+    # 有要lock部分的时候? 居然提供length & start.
+    # fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB, 0, 0, os.SEEK_SET)
+    fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except IOError:
+    os.close(fd)
+    sys.exit(1)
 
-    os.ftruncate(fd, 0)
-    os.write(fd, 'xx)
+os.ftruncate(fd, 0)
+os.write(fd, os.getpid())
 ```
