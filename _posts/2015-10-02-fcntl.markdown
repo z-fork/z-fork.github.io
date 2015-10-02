@@ -7,10 +7,13 @@ tags:
 
 **模块**
 
+```
     os, stat, fcntl
+```
 
 **函数**
 
+```
     1. os.open(file, flags[, mode])
 
     flags:
@@ -53,6 +56,7 @@ tags:
         os.SEEK_END     - relative to the end of the file
 
     The default for start is 0, which means to start at the beginning of the file. The default for length is 0 which means to lock to the end of the file. The default for whence is also 0.
+```
 
 **例子**
 
