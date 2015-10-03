@@ -5,15 +5,15 @@ tags:
   - python
 ---
 
-### 模块
+## 模块
 
 ```nohighlight
 os, stat, fcntl
 ```
 
-### 函数
+## 函数
 
-#### os.open(file, flags[, mode])
+### * os.open(file, flags[, mode])
 
 flags:
 
