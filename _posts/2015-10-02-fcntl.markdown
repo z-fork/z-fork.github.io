@@ -13,8 +13,7 @@ os, stat, fcntl
 
 ### function
 
-* os.open(file, flags[, mode])
-* xxx
+* **os.open(file, flags[, mode])**
 
 flags:
 
