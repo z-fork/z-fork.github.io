@@ -13,10 +13,6 @@ who involved in
 
 mail 
 
-> echo srvpqxfbyqfvpdtkbjwt | tr yxwvtsrqpkjfdb zuonmlihgeca@.
-
-or follow 
-
-> [@o_lll](https://twitter.com/#!/o_lll)
+> echo epmbppowvmxjqm | tr xoqbvepmwj a@cgimons.
 
 to reach me
