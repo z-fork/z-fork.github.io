@@ -27,9 +27,9 @@ flags:
     os.O_EXCL       - 如果文件存在, 并且指定了 os.O_CREAT, 在os.open 调用会抛出 OSError 异常
 ```
 
-**如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.**
+***如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.***
 
-#### fcntl.fcntl(fd, op[, arg])
+### fcntl.fcntl(fd, op[, arg])
 
 op:
 
