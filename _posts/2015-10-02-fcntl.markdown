@@ -5,15 +5,15 @@ tags:
   - python
 ---
 
-## 模块
+### module
 
 ```nohighlight
 os, stat, fcntl
 ```
 
-## 函数
+### function
 
-### * os.open(file, flags[, mode])
+#### * os.open(file, flags[, mode])
 
 flags:
 
@@ -27,9 +27,9 @@ flags:
     os.O_EXCL       - 如果文件存在, 并且指定了 os.O_CREAT, 在os.open 调用会抛出 OSError 异常
 ```
 
-***如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.***
+*如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.*
 
-### fcntl.fcntl(fd, op[, arg])
+#### fcntl.fcntl(fd, op[, arg])
 
 op:
 
@@ -38,7 +38,7 @@ op:
     F_SETFD         - 设置 close-on-exec 标志, 该标志以参数 arg 的 FD_CLOEXEC 位定位
 ```
 
-**FD_CLOEXEC 表示程序执行 exec 函数时当前 fd 将被系统自动关闭, 表示不传递给 exec 创建的新进程, 默认情况下文件不关闭.**
+*FD_CLOEXEC 表示程序执行 exec 函数时当前 fd 将被系统自动关闭, 表示不传递给 exec 创建的新进程, 默认情况下文件不关闭.*
 
 #### fcntl.lockf(fd, operation[, length[, start[, whence]]])
 
@@ -64,7 +64,7 @@ whence:
 The default for start is 0, which means to start at the beginning of the file. The default for length is 0 which means to lock to the end of the file. The default for whence is also 0.
 
 
-### 例子
+### example
 
 ```python
 import os
