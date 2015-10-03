@@ -1,0 +1,135 @@
+---
+title: process
+layout: post
+tags:
+  - python
+---
+
+#### module
+
+```nohighlight
+os, multiprocess, errno
+```
+
+#### function
+
+* **os.fork()**
+
+fork一个子进程. 子进程返回0, 父进程中返回子进程ID. *如果发生错误, 则抛出OSError异常*
+
+* **os.wait()**
+
+进程一旦调用了 wait 就立即阻塞自己, 由 wait 自动分析是否当前进程的某个子进程已经退出.
+如果让它找到了这样一个已经变成僵尸的子进程, wait就会收集这个子进程的信息, 并把它彻底销毁后返回.
+如果没有找到这样一个子进程, wait 就会一直阻塞在这里，直到有一个出现为止.
+
+*如果成功, wait会返回被收集的子进程的进程 pid 与 状态 status 的 tuple.*
+
+*如果调用进程没有子进程, 调用就会失败, OSError 异常, errno 被置为 os.ECHILD.*
+
+* **os.waitpid(pid, option)**
+
+waitpid 和 wait 的作用完全相同, 只是 waitpid 多了两个参数 pid 和 options, 可以更灵活的控制.
+
+pid:
+
+```nohighlight
+    pid >  0        - 不管其它已经有多少子进程运行结束, 只等待指定的子进程结束
+    pid = -1        - 等待任何一个子进程退出, 没有任何限制, 此时 waitpid 和 wait 一样
+    pid =  0        - 等待同一个进程组中的任何子进程, 如果子进程已经加入了别的进程组, waitpid不会对它做任何理睬
+    pid < -1        - 等待一个指定进程组中的任何子进程, 这个进程组的ID等于pid的绝对值
+```
+
+options:
+
+```nohighlight
+    0               - 默认值(会阻塞)
+    os.WNOHANG      - 即使没有子进程退出, 它也会立即返回, 不会像wait那样永远等下去
+```
+
+*如果成功, 返回 pid 与 status 的 tuple.*
+
+*如果设置了选项WNOHANG, 而调用中 waitpid 发现没有已退出的子进程可收集, 返回 pid 与 status 为 (0, 0) 的 tuple.*
+
+*当 pid 所指示的子进程不存在 waitpid 就会 OSError 异常， errno 被设置为 ECHILD*
+
+**wait() = waitpid(-1, 0)**
+
+服务器有五个子进程分别对应了 5 个客户, 5 个客户几乎在同时请求终止, 几乎同时 5 个 FIN 发向服务器, 同样的五个 SIGCHLD 信号到达服务器.
+然而 UNIX 的信号往往是不会排队的, 这样信号处理函数将只会执行一次, 残留剩余四个子进程作为僵尸进程驻留在内核空间.
+正确的解决办法是利用 waitpid(-1, os.WNOHANG) 防止留下僵尸进程. os.WNOHANG 选择项通知内核在没有已终止进程项时不要阻塞.
+
+#### example
+
+```python
+
+import os
+import time
+import errno
+import logging
+
+num = 3
+children = []
+
+for i in range(num):
+    pid = os.fork()
+
+    if pid == 0:
+        logging.warning('child pid: %d' % os.getpid())
+        while True:
+            time.sleep(1)
+            logging.warning('child pid: %d time.time: %s' % (os.getpid(), time.time()))
+    else:
+        children.append(pid)
+
+while children:
+    try:
+        pid, status = os.wait()
+    except OSError as e:
+        if e.errno == errno.EINTR:
+            logging.warning(time.time())
+            continue
+        raise
+
+    if pid in children:
+        del children[children.index(pid)]
+
+        if status == 0:
+            logging.warning('child %d exited normally' % pid)
+        else:
+            logging.error('chiled %d exited with status %d' % (pid, status))
+
+while children:
+    for pid in children:
+        try:
+            pid, status = os.waitpid(pid, os.WNOHANG)
+        except OSError as e:
+            if e.errno == errno.ECHILD:
+                continue
+
+        if pid == 0:
+            continue
+
+        if pid in children:
+            del children[children.index(pid)]
+
+            if status == 0:
+                logging.warning('child %d exited normally' % pid)
+            else:
+                logging.error('chiled %d exited with status %d' % (pid, status))
+```
+
+#### recommend
+
+**用在父进程用 wait() 和 waitpid() 会使父进程挂起的解决办法**
+
+* 可以用 signal 函数为 指定 SIGCHLD handler. 在子进程结束后, 父进程会收到该信号, 可以在 handler 中调用wait回收.
+* 如果父进程不关心子进程什么时候结束, 那么可以用 signal(SIGCLD, SIG_IGN) 或 signal(SIGCHLD, SIG_IGN) 通知内核自己对子进程的结束不感兴趣, 那么子进程结束后内核会回收并不再给父进程发送信号.
+* fork两次, 父进程fork一个子进程, 然后继续工作, 子进程fork一个孙进程后退出, 那么孙进程被init接管, 孙进程结束后, init会回收. 不过子进程的回收还要自己做.
+
+#### todo
+
+* 进程组
+* 孙子进程 & init接管?
+* signal.SIGCHLD, 再现 example 上面的例子
+* recommend 中第三个方法可以用来创建 daemon 进程?
