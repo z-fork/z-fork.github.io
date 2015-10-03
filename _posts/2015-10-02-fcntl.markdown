@@ -13,7 +13,7 @@ os, stat, fcntl
 
 ### function
 
-* **os.open(file, flags[, mode])**
+* os.open(file, flags[, mode])
 
 flags:
 
@@ -29,7 +29,7 @@ flags:
 
 *如果 flags 中包含了 os.O_CREAT 选项, 则需要指定 mode 参数, 指示文件创建时使用的权限.*
 
-#### * fcntl.fcntl(fd, op[, arg])
+* fcntl.fcntl(fd, op[, arg])
 
 op:
 
@@ -40,7 +40,7 @@ op:
 
 *FD_CLOEXEC 表示程序执行 exec 函数时当前 fd 将被系统自动关闭, 表示不传递给 exec 创建的新进程, 默认情况下文件不关闭.*
 
-#### fcntl.lockf(fd, operation[, length[, start[, whence]]])
+* fcntl.lockf(fd, operation[, length[, start[, whence]]])
 
 operation:
 
