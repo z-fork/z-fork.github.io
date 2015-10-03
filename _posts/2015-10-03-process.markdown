@@ -3,12 +3,13 @@ title: process
 layout: post
 tags:
   - python
+  - process
 ---
 
 #### module
 
 ```nohighlight
-os, multiprocess, errno
+os, errno
 ```
 
 #### function
@@ -133,3 +134,4 @@ while children:
 * 孙子进程 & init接管?
 * signal.SIGCHLD, 再现 example 上面的例子
 * recommend 中第三个方法可以用来创建 daemon 进程?
+* multiprocess
