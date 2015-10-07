@@ -83,11 +83,11 @@ assert 0 == subprocess.call('ls /bin/ls', shell=True)
     creationflags       -
 ```
 
-*subprocess.PIPE*
+`subprocess.PIPE`
 
 subprocess.PIPE 用于初始化 stdin, stdout, stderr 参数. 表示与子进程通信的标准流.
 
-*subprocess.STDOUT*
+`subprocess.STDOUT`
 
 subprocess.STDOUT 用于初始化 stderr 参数. 表示将错误通过标准输出流输出.
 
