@@ -1,0 +1,81 @@
+---
+title: monitor
+
+layout: post
+
+tags:
+
+- linux
+- grafana
+- influxdb
+- collectd
+
+---
+
+**Grafana**
+
+[Installation Document](http://docs.grafana.org/installation/debian/)
+
+```nohighlight
+$ wget https://grafanarel.s3.amazonaws.com/builds/grafana_2.1.3_amd64.deb
+
+$ sudo apt-get install -y adduser libfontconfig
+
+$ sudo dpkg -i grafana_2.1.3_amd64.deb
+
+$ sudo service grafana-server start
+```
+
+**Influxdb**
+
+[Installation Document](https://influxdb.com/docs/v0.9/introduction/installation.html)
+
+```nohighlight
+wget http://influxdb.s3.amazonaws.com/influxdb_0.9.4.2_amd64.deb
+
+sudo dpkg -i influxdb_0.9.4.2_amd64.deb
+
+sudo /etc/init.d/influxdb start
+```
+
+**Collectd**
+
+```nohighlight
+$ sudo apt-get install collectd
+```
+
+**Configuration**
+
+```nohighlight
+
+1. 在 influxdb 中, 创建 collectd 数据库, 用来存 collectd 发送的数据。
+
+2. $ ps -ef | grep influxdb (找到 config 文件)
+
+  # collectd: (找到 collectd 模块)
+  enabled = true
+  database = "collectd"  (第一步中创建的 database)
+
+3. $ sudo service influxdb restart
+
+  重启 influxdb
+
+4. $ sudo netstat -tupln
+
+  可以看到默认开启 25826 端口, 用来接受 collectd 发送的数据
+
+5. $ ps -ef | grep collectd (找到 config 文件)
+
+  配置 collectd 为客户端
+  ...
+  LoadPlugin network
+  ...
+  <Plugin network>
+      Server "127.0.0.1" "25826"
+  </Plugin>
+
+6. $ sudo service collectd restart
+
+  重启 collectd
+
+```
