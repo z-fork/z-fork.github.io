@@ -1,9 +1,13 @@
 ---
 title: process
+
 layout: post
+
 tags:
-  - python
-  - process
+
+- python
+- process
+
 ---
 
 #### module
