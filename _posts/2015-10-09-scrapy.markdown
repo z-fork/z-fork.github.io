@@ -1,5 +1,5 @@
 ---
-title: scrapy
+title: 八一八 Scrapy
 
 layout: post
 
@@ -10,9 +10,11 @@ tags:
 
 ---
 
-## 八一八 Scrapy
+### 原厂 scrapy
 
-### 原生 scrapy
+所谓原厂, github 上直接 clone 的, 没有加以改造.
+
+所谓八一八, 不跳出官方文档范围, 也不局限于官方文档.
 
 #### 基本设置 - settings
 
