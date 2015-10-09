@@ -18,8 +18,7 @@ tags:
 
 settings:
 
-```
-nohighlight
+```nohighlight
 
     CONCURRENT_REQUESTS             - 全局并发数, 在外层, 限制所有 active 的线程数.
     CONCURRENT_REQUESTS_PER_DOMAIN  - 单个 domain 并发数, 在内层, 限制 ConnectionPool 的大小.
@@ -46,8 +45,7 @@ nohighlight
 
 常见的有 Agent, Proxy 也有因需求定制的 Retry, Redirect, Forbidden 等 middleware. 爬虫本身无非调度与下载, 这些 middleware 都属于下载的过程中, 离不开 process_request 和 process_response. 下面给出 middleware 一般格式.
 
-```
-python
+```python
 
     from twisted.internet import defer
     from twisted.internet.error import TimeoutError, ...
@@ -109,8 +107,7 @@ python
 
 原生 scrapy 的不足:
 
-```
-nohighlight
+```nohighlight
 
     1. 爬虫无状态, 不能暂停, 停止不能继续爬.
     2. 单机
@@ -121,8 +118,7 @@ nohighlight
 
 scrapy-redis 无非把 scrapy scheduler 放到了 redis, 不再是用 python 数据结构. scheduler 如字面意思主要的作用是调度 request, 包含 `next_request` 和 `enqueue_request` 方法. 从 queue 中获取接下来处理的请求和需要处理的请求入 queue.
 
-```
-python
+```python
 
     # 重写 scheduler, request 存在 redis, 非本地内存.
     SCHEDULER = 'scrapy_redis.scheduler.Scheduler'
