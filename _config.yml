@@ -1,10 +1,7 @@
-markdown: redcarpet
+markdown: rdiscount
 highlighter: pygments
 permalink: /:year/:month/:day/:title.html
 name: "z-fork"
-#markdown: rdiscount
-redcarpet:
-    extensions: ["tables"]
 
 author: "z-fork"
 atom-baseurl: "z-fork.github.io"
