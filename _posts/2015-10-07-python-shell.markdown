@@ -1,13 +1,9 @@
 ---
 title: python shell
-
 layout: post
-
 tags:
-
 - python
 - shell
-
 ---
 
 #### module

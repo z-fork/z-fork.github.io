@@ -1,15 +1,11 @@
 ---
 title: monitor
-
 layout: post
-
 tags:
-
 - linux
 - grafana
 - influxdb
 - collectd
-
 ---
 
 **Grafana**
@@ -77,5 +73,4 @@ $ sudo apt-get install collectd
 6. $ sudo service collectd restart
 
   重启 collectd
-
 ```

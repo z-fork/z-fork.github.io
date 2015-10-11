@@ -1,13 +1,9 @@
 ---
 title: fcntl
-
 layout: post
-
 tags:
-
 - python
 - fcntl
-
 ---
 
 #### module

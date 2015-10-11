@@ -1,14 +1,10 @@
 ---
 title: 八一八 Scrapy
-
 layout: post
-
 tags:
-
 - python
 - scrapy
 - 八一八
-
 ---
 
 ### 原厂 scrapy
@@ -22,7 +18,6 @@ tags:
 settings:
 
 ```nohighlight
-
     CONCURRENT_REQUESTS             - 全局并发数, 在外层, 限制所有 active 的线程数.
     CONCURRENT_REQUESTS_PER_DOMAIN  - 单个 domain 并发数, 在内层, 限制 ConnectionPool 的大小.
 
@@ -41,7 +36,6 @@ settings:
     COOKIES_ENABLED                 - 是否启用cookie, 也可以 meta['dont_merge_cookies'] 来控制.
 
     USER_AGENT                      - 全局UA.
-
 ```
 
 #### middleware(download middleware)
@@ -49,7 +43,6 @@ settings:
 常见的有 Agent, Proxy 也有因需求定制的 Retry, Redirect, Forbidden 等 middleware. 爬虫本身无非调度与下载, 这些 middleware 都属于下载的过程中, 离不开 process_request 和 process_response. 下面给出 middleware 一般格式.
 
 ```python
-
     from twisted.internet import defer
     from twisted.internet.error import TimeoutError, ...
 
@@ -92,7 +85,6 @@ settings:
             # 一般 hold 住的异常, request.meta 来判断并相应处理
             if isinstance(exception, self.EXCEPTIONS) and 'xxxx' in request.meta:
                 # do something...
-
 ```
 
 #### extension
@@ -111,10 +103,8 @@ settings:
 原生 scrapy 的不足:
 
 ```nohighlight
-
-    1. 爬虫无状态, 不能暂停, 停止不能继续爬.
+    1. 爬虫无状态, 不能暂停.
     2. 单机
-
 ```
 
 #### scheduler
@@ -122,14 +112,12 @@ settings:
 scrapy-redis 无非把 scrapy scheduler 放到了 redis, 不再是用 python 数据结构. scheduler 如字面意思主要的作用是调度 request, 包含 `next_request` 和 `enqueue_request` 方法. 从 queue 中获取接下来处理的请求和需要处理的请求入 queue.
 
 ```python
-
     # 重写 scheduler, request 存在 redis, 非本地内存.
     SCHEDULER = 'scrapy_redis.scheduler.Scheduler'
     # 是否开启暂停模式. (退出时不清空 redis 中 request queue ...)
     SCHEDULER_PERSIST = True
     # 有 Queue, Stack, PriorityQueue 当然也可需求写其他. 哪怕通过 DOMAIN LRU 的, 理论上未尝不可.
     SCHEDULER_QUEUE_CLASS = 'scrapy_redis.queue.SpiderQueue'
-
 ```
 
 ### 漫谈
