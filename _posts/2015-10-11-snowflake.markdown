@@ -12,7 +12,7 @@ tags:
 
 #### snowflake
 
-| timestamp | configured machine id | sequence number  |
-| :-------: |:---------------------:| :---------------:|
-| 41bits    | 10bits                | 12bits           |
+| [timestamp] |  [configured machine id]  |  [sequence number] |
+| :---------: | :-----------------------: | :----------------: |
+| 41bits      | 10bits                    | 12bits             |
 
