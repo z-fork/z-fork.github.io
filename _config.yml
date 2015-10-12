@@ -1,4 +1,5 @@
-markdown: rdiscount
+#markdown: rdiscount
+markdown: kramdown
 highlighter: pygments
 permalink: /:year/:month/:day/:title.html
 name: "z-fork"
