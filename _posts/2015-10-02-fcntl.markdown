@@ -8,9 +8,10 @@ tags:
 
 #### module
 
-```nohighlight
+~~~ nohighlight
+
 os, stat, fcntl
-```
+~~~
 
 #### function
 
@@ -18,7 +19,7 @@ os, stat, fcntl
 
 flags:
 
-```nohighlight
+``` nohighlight
     os.O_RDONLY     - 文件以只读方式打开
     os.O_WRONLY     - 文件以只写方式打开
     os.O_RDWR       - 文件以读写方式打开
