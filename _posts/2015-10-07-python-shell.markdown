@@ -8,9 +8,9 @@ tags:
 
 #### module
 
-```nohighlight
+{% highlight python %}
 os, commands, subprocess
-```
+{% endhighlight %}
 
 #### function
 

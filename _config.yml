@@ -1,12 +1,11 @@
 #markdown: rdiscount
 markdown: kramdown
-highlighter: pygments
+
 permalink: /:year/:month/:day/:title.html
 name: "z-fork"
 
 author: "z-fork"
 atom-baseurl: "z-fork.github.io"
-disqus: "gopherwood"
 
 navigations:
   - title: Archive
