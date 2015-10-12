@@ -18,36 +18,28 @@ os, commands, subprocess
 
 `execl` 与 Unix 的 exec 系统调用一致. 这些方法适用于子进程中调用外部程序的情况, 外部程序会替换当前进程代码, 不会返回.
 
-```python
-os.execl('/usr/bin/python', 'python', '--version')
-```
+    os.execl('/usr/bin/python', 'python', '--version')
 
 * **os.system(command)**
 
 `system` 会创建子进程运行 command 命令, 并返回 command 命令执行完成后的推出状态. *实际上是适用 c 标准库函数 system()实现*. 这个方法适用没有输出结果只关心是否正常运行退出.
 
-```python
-assert 0 == os.system('ls /bin/ls')
-```
+    assert 0 == os.system('ls /bin/ls')
 
 * **os.popen(command, mode, bufesize)**
 
 `popen` 打开一个与 command 进程之间的管道, 获取外部程序的输出结果, 返回一个 file 对象.
 
-```python
-import os
-p = os.popen('ls')
-assert isinstance(p, file) is True
-```
+    import os
+    p = os.popen('ls')
+    assert isinstance(p, file) is True
 
 * **commands.getstatusoutput(command)**
 
 `getstatusoutput` 使用 `os.popen()` 执行 command 命令并返回一个执行状态和执行结果的tuple (status, output). 实际上以 *command 2>&1* 方式执行, output 中包含 stdout, stderr. output 中不包含尾部换行符.
 
-```python
-import commands
-assert (0, '/bin/ls') == commands.getstatusoutput('ls /bin/ls')
-```
+    import commands
+    assert (0, '/bin/ls') == commands.getstatusoutput('ls /bin/ls')
 
 **This module intends to replace serveral other, older modules and functions, shuch as: os.system, os.spawn\*, os.popen\*, popen2.\*, commands.\***
 
@@ -55,14 +47,11 @@ assert (0, '/bin/ls') == commands.getstatusoutput('ls /bin/ls')
 
 如果 command 不是一个可执行文件, shell=True.
 
-```python
-import subprocess
-assert 0 == subprocess.call('ls /bin/ls', shell=True)
-```
+    import subprocess
+    assert 0 == subprocess.call('ls /bin/ls', shell=True)
 
 * **subprocess.Popen(args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False, shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0)**
 
-```nohighlight
     args                - str or list or tuple, 用于指定进程的可执行文件及其参数. 如果是 list or tuple 第一个元素通常是可执行文件的路径. 也可以显示的在 executable 参数来指定可执行文件的路径.
     bufsize             -
     executable          - 用于指定可执行程序. 如果将参数 shell 设为 True, executable 将指定程序使用的 shell.
@@ -77,7 +66,6 @@ assert 0 == subprocess.call('ls /bin/ls', shell=True)
     universal_newlines  - 换行符, 如果将此参数设置为 True, Python 统一换行符当作 '\n' 来处理.
     startupinfo         -
     creationflags       -
-```
 
 `subprocess.PIPE`
 
@@ -125,49 +113,47 @@ subprocess.STDOUT 用于初始化 stderr 参数. 表示将错误通过标准输�
 
 #### example
 
-```python
-import time
-import signal
-import tempfile
-import subprocess
+    import time
+    import signal
+    import tempfile
+    import subprocess
 
 
-def run(command):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-    output, _ = process.communicate()
-    return process.returncode, output
+    def run(command):
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+        output, _ = process.communicate()
+        return process.returncode, output
 
 
-def run_async(command, timeout=5):
-    tf = tempfile.TemporaryFile()
-    process = subprocess.Popen(command, stdout=tf, stderr=subprocess.STDOUT, shell=True)
-    seek = 0
-    start_time = time.time()
-    while True:
-        time.sleep(0.1)
+    def run_async(command, timeout=5):
+        tf = tempfile.TemporaryFile()
+        process = subprocess.Popen(command, stdout=tf, stderr=subprocess.STDOUT, shell=True)
+        seek = 0
+        start_time = time.time()
+        while True:
+            time.sleep(0.1)
 
-        tf.seek(seek)
-        line = tf.readline()
+            tf.seek(seek)
+            line = tf.readline()
 
-        if not line:
-            if process.poll() is None:
-                continue
+            if not line:
+                if process.poll() is None:
+                    continue
+                else:
+                    break
             else:
-                break
-        else:
-            if time.time() - start_time > timeout:
-                process.send_signal(signal.SIGTERM)
-            seek = tf.tell()
+                if time.time() - start_time > timeout:
+                    process.send_signal(signal.SIGTERM)
+                seek = tf.tell()
 
-        yield line
+            yield line
 
 
-print run('ls /bin/ls')
+    print run('ls /bin/ls')
 
 
-for message in run_async('ping www.github.com', 5):
-    print message
-```
+    for message in run_async('ping www.github.com', 5):
+        print message
 
 #### todo
 
