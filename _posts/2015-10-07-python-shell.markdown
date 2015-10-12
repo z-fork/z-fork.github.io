@@ -62,7 +62,7 @@ assert 0 == subprocess.call('ls /bin/ls', shell=True)
 
 * **subprocess.Popen(args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False, shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0)**
 
-~~~
+~~~ nohighlight
 args                - str or list or tuple, 用于指定进程的可执行文件及其参数. 如果是 list or tuple 第一个元素通常是可执行文件的路径. 也可以显示的在 executable 参数来指定可执行文件的路径.
 bufsize             -
 executable          - 用于指定可执行程序. 如果将参数 shell 设为 True, executable 将指定程序使用的 shell.
