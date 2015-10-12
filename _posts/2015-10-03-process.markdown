@@ -8,9 +8,9 @@ tags:
 
 #### module
 
-```nohighlight
-os, errno
-```
+~~~ nohighlight
+	os, errno
+~~~
 
 #### function
 
@@ -34,19 +34,19 @@ waitpid 和 wait 的作用完全相同, 只是 waitpid 多了两个参数 pid �
 
 pid:
 
-```nohighlight
+~~~ nohighlight
     pid >  0        - 不管其它已经有多少子进程运行结束, 只等待指定的子进程结束
     pid = -1        - 等待任何一个子进程退出, 没有任何限制, 此时 waitpid 和 wait 一样
     pid =  0        - 等待同一个进程组中的任何子进程, 如果子进程已经加入了别的进程组, waitpid不会对它做任何理睬
     pid < -1        - 等待一个指定进程组中的任何子进程, 这个进程组的ID等于pid的绝对值
-```
+~~~
 
 options:
 
-```nohighlight
+~~~ nohighlight
     0               - 默认值(会阻塞)
     os.WNOHANG      - 即使没有子进程退出, 它也会立即返回, 不会像wait那样永远等下去
-```
+~~~
 
 *如果成功, 返回 pid 与 status 的 tuple.*
 
@@ -62,7 +62,7 @@ options:
 
 #### example
 
-```python
+~~~ python
 
 import os
 import time
@@ -118,7 +118,7 @@ while children:
                 logging.warning('child %d exited normally' % pid)
             else:
                 logging.error('chiled %d exited with status %d' % (pid, status))
-```
+~~~
 
 #### recommend
 

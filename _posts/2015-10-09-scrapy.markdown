@@ -17,7 +17,7 @@ tags:
 
 settings:
 
-```nohighlight
+~~~ nohighlight
     CONCURRENT_REQUESTS             - 全局并发数, 在外层, 限制所有 active 的线程数.
     CONCURRENT_REQUESTS_PER_DOMAIN  - 单个 domain 并发数, 在内层, 限制 ConnectionPool 的大小.
 
@@ -36,56 +36,56 @@ settings:
     COOKIES_ENABLED                 - 是否启用cookie, 也可以 meta['dont_merge_cookies'] 来控制.
 
     USER_AGENT                      - 全局UA.
-```
+~~~
 
 #### middleware(download middleware)
 
 常见的有 Agent, Proxy 也有因需求定制的 Retry, Redirect, Forbidden 等 middleware. 爬虫本身无非调度与下载, 这些 middleware 都属于下载的过程中, 离不开 process_request 和 process_response. 下面给出 middleware 一般格式.
 
-```python
-    from twisted.internet import defer
-    from twisted.internet.error import TimeoutError, ...
+~~~ python
+from twisted.internet import defer
+from twisted.internet.error import TimeoutError, ...
 
-    from scrapy import signals
-    from scrapy.exceptions import NotConfigured
+from scrapy import signals
+from scrapy.exceptions import NotConfigured
 
 
-    class SomeMiddleware(object):
+class SomeMiddleware(object):
 
-        # 需要 hold 的异常.
-        EXCEPTIONS = (defer.TimeoutError, TimeoutError, ...)
+    # 需要 hold 的异常.
+    EXCEPTIONS = (defer.TimeoutError, TimeoutError, ...)
 
-        def __init__(self, xxxx, *args):
-            if not xxxx:
-                raise NotConfigured  # 如果 Enable 等是否启用时, 若无则抛这个异常.
-            # init something...
+    def __init__(self, xxxx, *args):
+        if not xxxx:
+            raise NotConfigured  # 如果 Enable 等是否启用时, 若无则抛这个异常.
+        # init something...
 
-        @classmethod
-        def from_crawler(cls, crawler):
-            # 从 settings 获取, 支持 get, getbool, getint, getfloat, getlist.
-            o = cls(crawler.settings.get('xxxx'), ...)
+    @classmethod
+    def from_crawler(cls, crawler):
+        # 从 settings 获取, 支持 get, getbool, getint, getfloat, getlist.
+        o = cls(crawler.settings.get('xxxx'), ...)
 
-            # 从 spider 中获取, 一般 middleware 中使用 signals.spider_opened.
-            crawler.signal.connect(o.spider_xxxx, signal=signals.spider_xxxx)
+        # 从 spider 中获取, 一般 middleware 中使用 signals.spider_opened.
+        crawler.signal.connect(o.spider_xxxx, signal=signals.spider_xxxx)
 
-            return o
+        return o
 
-        def spider_xxxx(self, spider):
-            self.xxxx = getattr(spider, 'xxxx')
+    def spider_xxxx(self, spider):
+        self.xxxx = getattr(spider, 'xxxx')
 
-        def process_request(self, request, spider):
-            # do something... 一般 request.meta 设置居多, spider.log 日志记录.
+    def process_request(self, request, spider):
+        # do something... 一般 request.meta 设置居多, spider.log 日志记录.
 
-        def process_response(self, request, response, spider):
-            # do something... 一般涉及 request.meta, response.status 居多.
-            # 必须返回 response 当然也有可能是 request, 比如 retry 时.
-            return response
+    def process_response(self, request, response, spider):
+        # do something... 一般涉及 request.meta, response.status 居多.
+        # 必须返回 response 当然也有可能是 request, 比如 retry 时.
+        return response
 
-        def process_exception(self, request, exception, spider):
-            # 一般 hold 住的异常, request.meta 来判断并相应处理
-            if isinstance(exception, self.EXCEPTIONS) and 'xxxx' in request.meta:
-                # do something...
-```
+    def process_exception(self, request, exception, spider):
+        # 一般 hold 住的异常, request.meta 来判断并相应处理
+        if isinstance(exception, self.EXCEPTIONS) and 'xxxx' in request.meta:
+            # do something...
+~~~
 
 #### extension
 
@@ -102,23 +102,23 @@ settings:
 
 原生 scrapy 的不足:
 
-```nohighlight
+~~~ nohighlight
     1. 爬虫无状态, 不能暂停.
     2. 单机
-```
+~~~
 
 #### scheduler
 
 scrapy-redis 无非把 scrapy scheduler 放到了 redis, 不再是用 python 数据结构. scheduler 如字面意思主要的作用是调度 request, 包含 `next_request` 和 `enqueue_request` 方法. 从 queue 中获取接下来处理的请求和需要处理的请求入 queue.
 
-```python
-    # 重写 scheduler, request 存在 redis, 非本地内存.
-    SCHEDULER = 'scrapy_redis.scheduler.Scheduler'
-    # 是否开启暂停模式. (退出时不清空 redis 中 request queue ...)
-    SCHEDULER_PERSIST = True
-    # 有 Queue, Stack, PriorityQueue 当然也可需求写其他. 哪怕通过 DOMAIN LRU 的, 理论上未尝不可.
-    SCHEDULER_QUEUE_CLASS = 'scrapy_redis.queue.SpiderQueue'
-```
+~~~ python
+# 重写 scheduler, request 存在 redis, 非本地内存.
+SCHEDULER = 'scrapy_redis.scheduler.Scheduler'
+# 是否开启暂停模式. (退出时不清空 redis 中 request queue ...)
+SCHEDULER_PERSIST = True
+# 有 Queue, Stack, PriorityQueue 当然也可需求写其他. 哪怕通过 DOMAIN LRU 的, 理论上未尝不可.
+SCHEDULER_QUEUE_CLASS = 'scrapy_redis.queue.SpiderQueue'
+~~~
 
 ### 漫谈
 

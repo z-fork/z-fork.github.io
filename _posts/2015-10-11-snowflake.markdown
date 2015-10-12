@@ -18,9 +18,7 @@ tags:
 
 [snowflake](https://github.com/falcondai/python-snowflake/blob/master/snowflake.py)
 
-```python
-# -*- coding: utf-8 -*-
-
+~~~ python
 import datetime
 
 # twitter's snowflake parameters
@@ -68,7 +66,7 @@ if __name__ == '__main__':
     t0 = int(time.time() * 1000)
     print local_datetime(t0)
     assert(melt(make_snowflake(t0, 0, 0, 0))[0] == t0)
-```
+~~~
 
 #### TODO
 
