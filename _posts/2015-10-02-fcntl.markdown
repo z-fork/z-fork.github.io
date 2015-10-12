@@ -9,7 +9,7 @@ tags:
 #### module
 
 ~~~ nohighlight
-	os, stat, fcntl
+os, stat, fcntl
 ~~~
 
 #### function

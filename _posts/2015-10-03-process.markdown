@@ -9,7 +9,7 @@ tags:
 #### module
 
 ~~~ nohighlight
-	os, errno
+os, errno
 ~~~
 
 #### function
@@ -36,9 +36,9 @@ pid:
 
 ~~~ nohighlight
 pid >  0        - 不管其它已经有多少子进程运行结束, 只等待指定的子进程结束
-pid = -1        - 等待任何一个子进程退出, 没有任何限制, 此时 waitpid 和 wait 一样
-pid =  0        - 等待同一个进程组中的任何子进程, 如果子进程已经加入了别的进程组, waitpid不会对它做任何理睬
-pid < -1        - 等待一个指定进程组中的任何子进程, 这个进程组的ID等于pid的绝对值
+pid = -1        - 等待一个子进程退出, 没有任何限制, 此时 waitpid 和 wait 一样
+pid =  0        - 等待同一个进程组中的子进程, 如果子进程已经加入了别的进程组, waitpid 不会理睬它
+pid < -1        - 等待一个指定进程组中的子进程, 这个进程组的ID等于pid的绝对值
 ~~~
 
 options:
