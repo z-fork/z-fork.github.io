@@ -66,8 +66,6 @@ $$ \theta_j := \theta_j + \alpha (y^{(i)}) - h_\theta(x^{(i)})) x_j^{(i)} $$
 
 \\[ h_\theta(x) = \theta_0 + \theta_1x_1 + \theta_2x_2 + \cdots + \theta_nx_n \\]
 
+#### TODO
 
-
-----
-
-证明另外会写. 关于为何这么取 cost function 以后会另解释.
+* 证明另外会写. 关于为何这么取 cost function 以后会另解释.
