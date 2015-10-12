@@ -18,7 +18,9 @@ os, commands, subprocess
 
 `execl` 与 Unix 的 exec 系统调用一致. 这些方法适用于子进程中调用外部程序的情况, 外部程序会替换当前进程代码, 不会返回.
 
-    os.execl('/usr/bin/python', 'python', '--version')
+{% highlight python %}
+os.execl('/usr/bin/python', 'python', '--version')
+{% endhighlight %}
 
 * **os.system(command)**
 
