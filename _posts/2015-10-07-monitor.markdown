@@ -12,7 +12,7 @@ tags:
 
 [Installation Document](http://docs.grafana.org/installation/debian/)
 
-~~~ shell
+~~~ nohighlight
 $ wget https://grafanarel.s3.amazonaws.com/builds/grafana_2.1.3_amd64.deb
 
 $ sudo apt-get install -y adduser libfontconfig
@@ -26,7 +26,7 @@ $ sudo service grafana-server start
 
 [Installation Document](https://influxdb.com/docs/v0.9/introduction/installation.html)
 
-~~~ shell
+~~~ nohighlight
 wget http://influxdb.s3.amazonaws.com/influxdb_0.9.4.2_amd64.deb
 
 sudo dpkg -i influxdb_0.9.4.2_amd64.deb
@@ -36,13 +36,13 @@ sudo /etc/init.d/influxdb start
 
 **Collectd**
 
-~~~ shell
+~~~ nohighlight
 $ sudo apt-get install collectd
 ~~~
 
 **Configuration**
 
-~~~ shell
+~~~ nohighlight
 
 1. 在 influxdb 中, 创建 collectd 数据库, 用来存 collectd 发送的数据。
 

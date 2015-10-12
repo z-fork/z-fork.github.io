@@ -18,24 +18,24 @@ tags:
 settings:
 
 ~~~ nohighlight
-    CONCURRENT_REQUESTS             - 全局并发数, 在外层, 限制所有 active 的线程数.
-    CONCURRENT_REQUESTS_PER_DOMAIN  - 单个 domain 并发数, 在内层, 限制 ConnectionPool 的大小.
+CONCURRENT_REQUESTS             - 全局并发数, 在外层, 限制所有 active 的线程数.
+CONCURRENT_REQUESTS_PER_DOMAIN  - 单个 domain 并发数, 在内层, 限制 ConnectionPool 的大小.
 
-    DOWNLOAD_TIMEOUT                - 超时时间, twisted deffered 中设置 request 的 timeout.
+DOWNLOAD_TIMEOUT                - 超时时间, twisted deffered 中设置 request 的 timeout.
 
-    DOWNLOAD_DELAY                  - 延迟, reactor.callLater 来实现.
+DOWNLOAD_DELAY                  - 延迟, reactor.callLater 来实现.
 
-    DEPTH_LIMIT                     - 抓取深度, meta['depth'] 来控制深度.
-    DEPTH_PRIORITY                  - 0: DFS, 1: BFS; 控制 request.priority 来控制.
+DEPTH_LIMIT                     - 抓取深度, meta['depth'] 来控制深度.
+DEPTH_PRIORITY                  - 0: DFS, 1: BFS; 控制 request.priority 来控制.
 
-    REDIRECT_ENABLED                - 跳转
-    REDIRECT_MAX_TIMES              - 跳转限制
+REDIRECT_ENABLED                - 跳转
+REDIRECT_MAX_TIMES              - 跳转限制
 
-    FORBIDDEN_ENABLED               - forbidden, FORBIDDEN_HTTP_CODES 来设置.
+FORBIDDEN_ENABLED               - forbidden, FORBIDDEN_HTTP_CODES 来设置.
 
-    COOKIES_ENABLED                 - 是否启用cookie, 也可以 meta['dont_merge_cookies'] 来控制.
+COOKIES_ENABLED                 - 是否启用cookie, 也可以 meta['dont_merge_cookies'] 来控制.
 
-    USER_AGENT                      - 全局UA.
+USER_AGENT                      - 全局UA.
 ~~~
 
 #### middleware(download middleware)

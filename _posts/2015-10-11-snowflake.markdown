@@ -12,9 +12,9 @@ tags:
 
 #### snowflake(64bits)
 
-| timestamp | data center | worker | sequence number |
-| :-------: | :---------: | :----: | :-------------: |
-| 41bits    | 5bits       | 5bits  | 12bits          |
+| timestamp | datacenter | worker | sequence |
+| :-------: | :--------: | :----: | :------: |
+| 41bits    | 5bits      | 5bits  | 12bits   |
 
 [snowflake](https://github.com/falcondai/python-snowflake/blob/master/snowflake.py)
 
@@ -23,23 +23,22 @@ import datetime
 
 # twitter's snowflake parameters
 twepoch = 1288834974657L
-datacenter_id_bits = 5L
-worker_id_bits = 5L
-sequence_id_bits = 12L
-max_datacenter_id = 1 << datacenter_id_bits
-max_worker_id = 1 << worker_id_bits
-max_sequence_id = 1 << sequence_id_bits
-max_timestamp = 1 << (64L - datacenter_id_bits - worker_id_bits - sequence_id_bits)
+datacenter = 5L
+worker = 5L
+sequence = 12L
+max_datacenter_id = 1 << datacenter
+max_worker_id = 1 << worker
+max_sequence_id = 1 << sequence
+max_timestamp = 1 << (64L - datacenter - worker - sequence)
 
 
 def make_snowflake(timestamp_ms, datacenter_id, worker_id, sequence_id, twepoch=twepoch):
-    """generate a twitter-snowflake id, based on
-    https://github.com/twitter/snowflake/blob/master/src/main/scala/com/twitter/service/snowflake/IdWorker.scala
+    """generate a twitter-snowflake id
     :param: timestamp_ms time since UNIX epoch in milliseconds"""
 
-    sid = ((int(timestamp_ms) - twepoch) % max_timestamp) << datacenter_id_bits << worker_id_bits << sequence_id_bits
-    sid += (datacenter_id % max_datacenter_id) << worker_id_bits << sequence_id_bits
-    sid += (worker_id % max_worker_id) << sequence_id_bits
+    sid = ((int(timestamp_ms) - twepoch) % max_timestamp) << datacenter << worker << sequence
+    sid += (datacenter_id % max_datacenter_id) << worker << sequence
+    sid += (worker_id % max_worker_id) << sequence
     sid += sequence_id % max_sequence_id
 
     return sid
@@ -48,9 +47,9 @@ def make_snowflake(timestamp_ms, datacenter_id, worker_id, sequence_id, twepoch=
 def melt(snowflake_id, twepoch=twepoch):
     """inversely transform a snowflake id back to its parts."""
     sequence_id = snowflake_id & (max_sequence_id - 1)
-    worker_id = (snowflake_id >> sequence_id_bits) & (max_worker_id - 1)
-    datacenter_id = (snowflake_id >> sequence_id_bits >> worker_id_bits) & (max_datacenter_id - 1)
-    timestamp_ms = snowflake_id >> sequence_id_bits >> worker_id_bits >> datacenter_id_bits
+    worker_id = (snowflake_id >> sequence) & (max_worker_id - 1)
+    datacenter_id = (snowflake_id >> sequence >> worker) & (max_datacenter_id - 1)
+    timestamp_ms = snowflake_id >> sequence >> worker >> datacenter
     timestamp_ms += twepoch
 
     return timestamp_ms, int(datacenter_id), int(worker_id), int(sequence_id)
