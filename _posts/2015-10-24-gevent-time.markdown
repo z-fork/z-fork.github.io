@@ -42,6 +42,8 @@ if __name__ == '__main__':
 
 #### 测试方法
 
+`/usr/bin/time -l python client`
+
 **Client I**
 
 ~~~ python
@@ -84,9 +86,8 @@ for _ in xrange(times):
 
 #### 测试结果
 
-`/usr/bin/time -l python client`
-
 ~~~ nohighlight
+
 > /usr/bin/time -l python test.py
        14.65 real         8.49 user         1.35 sys
   12029952  maximum resident set size
