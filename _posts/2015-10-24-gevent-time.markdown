@@ -5,7 +5,7 @@ tags:
 - python
 - gevent
 - time
-- shell
+- todo
 ---
 
 #### 一个 server
@@ -55,12 +55,11 @@ monkey.patch_all()
 import gevent
 import requests
 
+times = 5000
+
 
 def test():
     requests.get('http://localhost:8888')
-
-
-times = 5000
 
 jobs = [gevent.spawn(test) for __ in xrange(times)]
 gevent.joinall(jobs)
@@ -73,12 +72,11 @@ gevent.joinall(jobs)
 
 import requests
 
+times = 5000
+
 
 def test():
     requests.get('http://localhost:8888')
-
-
-times = 5000
 
 for _ in xrange(times):
     test()
