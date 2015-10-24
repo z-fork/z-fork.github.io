@@ -8,7 +8,9 @@ tags:
 - shell
 ---
 
-#### server
+#### 一个 server
+
+**Server:**
 
 ~~~ python
 
@@ -38,7 +40,9 @@ if __name__ == '__main__':
     tornado.ioloop.IOLoop.current().start()
 ~~~
 
-#### client 1
+#### 测试方法
+
+**Client I**
 
 ~~~ python
 # -*- coding: utf-8 -*-
@@ -60,7 +64,7 @@ jobs = [gevent.spawn(test) for __ in xrange(times)]
 gevent.joinall(jobs)
 ~~~
 
-#### client 2
+**Client II**
 
 ~~~ python
 # -*- coding: utf-8 -*-
@@ -78,7 +82,9 @@ for _ in xrange(times):
     test()
 ~~~
 
-#### /usr/bin/time -l python client
+#### 测试结果
+
+`/usr/bin/time -l python client`
 
 ~~~ nohighlight
 > /usr/bin/time -l python test.py
