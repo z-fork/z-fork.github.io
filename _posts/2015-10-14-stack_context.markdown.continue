@@ -1,0 +1,131 @@
+浏览器打开多个url请求还是会阻塞一个个的响应呢?
+
+这个事浏览器自身实现的可能是缓存把,当请求的资源相同就会出现这个问题,可以使用多浏览器(多人)或者命令行下的curl登都不会有这个问题,还有个比较恶的解决方法:
+
+给你的请求添加一些无用参数，比如: ?t=1
+
+---
+
+~~~ python
+import threading
+
+
+class _State(threading.local):
+	def __init__(self):
+		self.contexts = ()
+
+_state = _State()
+~~~
+
+构造一个**线程安全的变量**, 程序运行过程中, 是全局变量.
+
+~~~ python
+def counter(start=0):
+	count = [start]
+
+	def incr():
+		count[0] += 1
+		return count[0]
+
+	return incr
+
+c = counter()
+
+assert c() == 1
+assert c() == 2
+~~~
+
+python2.x中只能访问闭包中的变量不能修改
+
+---
+
+tornado - stack_context
+
+异步调用中的异常
+
+~~~ python
+import tornado.ioloop
+
+instance = tornado.ioloop.IOLoop.instance()
+
+
+def do_division(a, b):
+	return a / b
+
+
+def async_division(a, b, callback):
+	if a == 0:
+		raise Exception('always equal to zero')
+	instance.add_callback(callback, a, b)
+
+
+try:
+	# async_division(0, 2, do_division)  #  (1)
+	async_division(2, 0, do_division)    #  (2)
+except Exception as e:
+	print e.message
+
+instance.start()
+~~~
+
+(1) 可以正常捕获异常, 而 (2) 已经超出了 `try...except` 范围.
+
+~~~ python
+def wrapper(fn):
+	def _wrap(*args, **kwargs):
+		try:
+			fn(*args, **kwargs)
+		except Exception as e:
+			print e.message
+	return _wrap
+
+wrapper(async_division)(2, 0, wrapper(do_division))
+~~~
+
+引入 `stack_content`
+
+~~~ python
+from tornado import stack_content
+
+
+def handle_division_exception(exc_type, exc_val, exc_tb):
+	print 'division exception', exc_val
+	return True
+
+with stack_context.ExceptionStackContext(handle_division_exception):
+	async_division(2, 1, do_division)
+	async_division(0, 2, do_division)
+
+with stack_context.ExceptionStackCOntext(handle_division_exception):
+	do_division = stack_context.wrap(do_division)
+	async_division(2, 0, do_division)
+~~~
+
+借助 `contextmanager` 来实现.
+
+~~~ python
+m, n = 5, 0
+
+
+def do_minus(b, rate):
+    if b == rate:
+        raise Exception('divided by one')
+
+
+def async_minus(b, rate, callback):
+    instance.add_callback(callback, b, rate)
+
+
+def handle_minus_exception(exc_type, exc_val, exc_tb):
+    print 'minus exception:', exc_val
+    return True
+
+
+with stack_context.ExceptionStackContext(handle_division_exception):
+    if m - n == 5:
+        with stack_context.ExceptionStackContext(handle_minus_exception):
+            do_minus = stack_context.wrap(do_minus)
+            async_minus(n, n, do_minus)
+    do_division = stack_context.wrap(do_division)
+    async_division(m, n, do_division)
+~~~

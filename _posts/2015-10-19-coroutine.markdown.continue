@@ -1,0 +1,297 @@
+### Generator
+
+**Origin ( yield & generator )**
+
+* 包含 **yield** 关键字的函数是 **generator**
+* **yield** 当且仅当应用在函数中生成一个 **generator**
+
+**Example**
+
+~~~ python
+>>> import types
+>>>	def sum(a):
+		print 'input b:'
+		b = yield
+		print 'a + b:', a + b
+
+>>>	gen = sum(3)
+
+>>> isinstance(gen, types.GeneratorType)
+True
+
+>>> gen.next()
+input b:
+
+>>> gen.send(2)
+a + b: 5
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+StopIteration
+~~~
+
+上例中可以看到 `type(gen) == <type 'generator'>`, **gen** 是一个 **generator**.
+
+**gen** 是通过 `gen = sum(3)` 负值获得一个 **generator**, 通过 `next()`, `send()` 等方法往下执行.
+
+**Difference with Function**
+
+* 当运行 `ret = func()` 语句时, 普通的 `func` **会**立即执行函数, 而包含 **yield** 的 `func` **不会**立即执行函数, 而是返回根据函数构造一个 **generator**.
+
+* `return` 在普通的 `func` 中作用是返回相应值, 在 **generator** `func` 中作用是抛出 `StopIteration` 异常, 终止迭代.
+
+**What is generator**
+
+*Q1*: **generator** (对象的类型)是什么(类似于 `int`, `str`, `tuple` 等这样的基本类型? 还是 `class` 这样的类类型?)
+
+~~~ python
+
+# generator 是一个 iterable 对象, 支持 iteration 协议 (next, StopIteration 等)
+>>> from collections import Iterable
+>>> isinstance(gen, Iterable)
+True
+~~~
+
+*Q2*: 用来干什么
+
+[PEP 255 -- Simple Generators](https://www.python.org/dev/peps/pep-0255/)
+
+*Q3*: 都有哪些操作
+
+---
+
+~~~ python
+def counter():
+    n = 0
+    while True:
+        yield n
+        n += 1
+
+
+>>> c = counter()
+>>> print c.next()
+0
+>>> print c.next()
+1
+
+
+def counter():
+    n = [-1]
+
+    def wrap():
+        n[0] += 1
+        return n[0]
+    return wrap
+
+
+>>> c = counter()
+>>> print c()
+0
+>>> print c()
+1
+~~~
+
+
+
+
+
+
+
+
+
+---
+
+你知道python怎么用嘛?
+在什么时候需要使用OOP？
+在什么时候使用类装饰器?
+你用过元类嘛?
+在什么时候用静态方法什么时候使用类方法?
+你了解那些管理属性? __call__ , __init__ , __new__都是在什么时候被触发?__getattr__和__getattribute__应用有什么不同?
+你知道标准库里面的多少个模块?你能在需要的时候知道这个功能其实标准库里面已经实现了?
+什么时候用回调？
+什么时候用signal？假如你会django你知道django的signal是什么?你了解orm嘛?
+asyncore，contextlib， functools， collections， heapq，itertools， SocketServer， weakref，operator(知道3个就算)这些你会几个？
+python的多态是什么?
+在什么场景可以尝试python的设计模式中的XX(能想到2个场景就算)?
+在什么时候可以使用Mixin？
+在什么时候可以使用python的闭包？
+你曾经用过yield嘛？生成器和迭代器的区别和应用场景是什么?
+
+在什么可以使用python的函数式编程?
+
+__future__模块里面都有什么定义的用法?
+
+---
+
+
+－
+
+－
+
+－
+
+－
+
+－
+
+－
+
+－
+
+－
+
+---
+
+~~~ python
+@asynchronous
+def get(self):
+    AsyncHTTPClient().fetch('http://example.com', callback=self.on_fetch)
+
+def on_fetch(self, response):
+    do_something_with_response(response)
+	self.finish()
+
+@gen.coroutine
+def get(self):
+    response = yield AsyncHTTPClient().fetch('http://example.com')
+    do_something_with_response(response)
+	self.finish()
+~~~
+
+`gen.coroutine`:
+
+~~~ nohighlight
+我还关心的一个问题, 一直想不明白的就是, yield 挂起以后, 当前是等待? (当然不是...好像联系起来了)
+
+如果是等待, 那就没有意义了.. 对么. (猜想, 如果必须是同步阻塞的, 还用同一个 main 进程/线程去做同步阻塞操作, 完全没意义嘛!!!
+
+异步非阻塞是通过 ioloop 基于 epoll, kqueue 等来实现. 用户程序的异步是基于callback, AsyncHTTPClient 因为也是 socket 来通信所以还是靠 ioloop 的 callback 机制来实现异步. 如果是非socket阻塞等待. 比如 IO, 读取数据库, 那么 concurrency 是基于多进程/线程中套一层壳来进程/线程结束的时候回调 callback 类似这种形式?
+)
+
+(想起来的是, 它是依托于 ioloop 支持 future, so... (把 callback..隐藏起来了. fuck!! 又跑题了),
+所以, future 也是走 ioloop 的回调, 所以这个 main 进程/线程 可以去干别的事情了...)
+
+跑题了, 下面重头写.
+~~~
+
+使用 `gen.coroutine` 目的是什么, 或者它干了什么事情, 它把 callback 干掉了! 还有能跟 AsyncHTTPClient 写在一个 `func` 中. - 所谓的`同步代码`(`异步callback代码的区别`)
+
+可以这么写的理由:
+
+1. `AsyncHTTPClient` 除了支持 callback, 支持 `future` 这种模式, 通过 `future` 可以 截获 response. (如果是默认的callback, 会把 callback 设置为 future 的 done callback, 即 response 收到后会被调用)
+2. `yield` 的特性. `yielded = get(xxx); yielded.send(response);`
+
+**并不是仅是因为** `gen.coroutine` **牛逼, 还得** `AsyncHTTPClient` **支持**
+
+~~~ python
+# gen.py
+def coroutine(func, replace_callback=True):
+	return _make_coroutine_wrapper(func, replace_callback=True)
+
+def _make_coroutine_wrapper(func, replace_callback):
+	# ...
+
+	@functools.wraps(func)
+	def wrapper(*args, **kwargs):
+		future = TracebackFuture()  # Future.
+
+		# ...
+
+		try:
+			# result = Request.get(self, *args, **kwargs)
+			# get(): ... response = yield AsyncHTTPClient(...) [1]
+			result = func(*args, **kwargs)  # <--- (1)
+		except (Return, StopIteration) as e:
+			result = _value_from_stopiteration(e)
+		except Exception:
+			future.set_exc_info(sys.exc_info())
+			return future
+		else:
+			# [1] 中可知
+			if isinstance(result, GeneratorType):
+				try:
+					# ...
+
+					# [1] 中可知, yielded 是 AsyncHTTPClient 的返回值 future
+					yielded = next(result)  # <--- (2)
+
+					# ...
+
+				except (StopIteration, Return) as e:
+					future.set_result(_value_from_stopiteration(e))
+				except Exception:
+					future.set_exc_info(sys.exc_info())
+				else:
+					Runner(result, future, yielded)  # <--- (3)
+				try:
+					return future
+				finally:
+					future = None
+		future.set_result(result)
+		return future
+	return wrapper
+
+
+class Runner(object):
+	def __init__(self, gen, result_future, first_yielded):
+		self.gen = gen
+		self.result_future = result_future
+
+		# ...
+
+		if self.handle_yield(first_yielded):
+			self.run()
+
+	# ...
+
+	def run(self):
+		# ...
+
+		try:
+			value = future.result()  # <---
+		except Exception:
+			self.had_exception = True
+			exc_info = sys.exc_info()
+
+		if exc_info is not None:
+			yielded = self.gen.throw(*exc_info)
+			exc_info = None
+		else:
+			# send(response) 回到了同步代码
+			yielded = self.gen.send(value)  # <---
+
+		# ...
+
+		# 如果还有 get 中还有 yield 重复同样的处理方法
+		if not self.hand_yield(yielded):
+			return
+
+		# ...
+
+	def handle_yield(self, yielded):
+
+		# ...
+
+		try:
+			# 此处 self.future <- yielded <- AsyncHTTPClient{return future}
+			self.future = convert_yielded(yielded)  # <--- (4)
+		except BadYieldError:
+			self.future = TracebackFuture()
+			self.future.set_exc_info(sys.sec_info())
+
+		if not self.future.done() or self.future is moment:
+			self.io_loop.add_future(
+				self.future, lambda f: self.run())  # <--- (5)
+			return False
+
+		# ...
+
+~~~
+
+---
+
+所谓变快! 高效! 不会各种阻塞等待! 本来逻辑该花多少时间花多少时间.
+
+
+
+
+
