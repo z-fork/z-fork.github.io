@@ -7,71 +7,72 @@ tags:
 
 ### intro
 
-    Header
-        +---------------------------+---------------------------+ ------------
-        |           src port        |           dst port        |   ^     ^
-        +---------------------------+---------------------------+   |     |
-        |                       seq number                      |   |     |
-        +---------------------------+---------------------------+         |
-        |                       ack number                      |  20     |
-        +---------------------------+---------------------------+ Bytes
-        | offset | reserved | flags |           window          |      offset
-        +---------------------------+---------------------------+   |
-        |           checksum        |       urgent pointer      |   v     |
-        +---------------------------+---------------------------+ -----   |
-        |                       tcp options                     |         v
-        +---------------------------+---------------------------+-----------
+Header
 
-        * TCP 没包含 IP, IP 是 IP 层的事情, TCP 在网络 OSI 的七层模型中
+    +---------------------------+---------------------------+ ---------
+    |           src port        |           dst port        |   ^     ^
+    +---------------------------+---------------------------+   |     
+    |                       seq number                      |   |     |
+    +---------------------------+---------------------------+         |
+    |                       ack number                      |  20     |
+    +---------------------------+---------------------------+ Bytes
+    | offset | reserved | flags |           window          |      offset
+    +---------------------------+---------------------------+   |
+    |           checksum        |       urgent pointer      |   v     |
+    +---------------------------+---------------------------+ ----    |
+    |                       tcp options                     |         v
+    +---------------------------+---------------------------+----------
 
-            TCP             - 第四层 Transport层    -- Segment  ( src_port, dst_port )
-            IP              - 第三层 Network层      -- Packet   ( src_ip, dst_ip )
-            Ethernet / ARP  - 第二层 Data Link层    -- Frame
+    * TCP 没包含 IP, IP 是 IP 层的事情, TCP 在网络 OSI 的七层模型中
 
-        TCP Header
-            src_port, dst_port; + ( IP Header) src_ip, dst_ip                               - 表示唯一 TCP/IP 连接
-            seq number                                                                      - 网络包乱序
-            ack number                                                                      - 丢包
-            window / advertised-window                                                      - 流控
-            flag  { C: CWR, E: ECE, U: Urgent, A: Ack, P: Push, R: Reset, S: Syn, F: Fin }  - 操控状态机
-            checksum { checksum(IP Header + TCP Header) }                                   - ???
+        TCP             - 第四层 Transport层    -- Segment  ( src_port, dst_port )
+        IP              - 第三层 Network层      -- Packet   ( src_ip, dst_ip )
+        Ethernet / ARP  - 第二层 Data Link层    -- Frame
 
-            TCP Options
-                0: End of Options List
-                1: Nop
-                2: MSS( Maximum segment size )
-                3: Window Scale
-                4: Sack ( Selective ACK ok )
-                8: Timestamp
+    TCP Header
+        src_port, dst_port; + ( IP Header) src_ip, dst_ip                               - 表示唯一 TCP/IP 连接
+        seq number                                                                      - 网络包乱序
+        ack number                                                                      - 丢包
+        window / advertised-window                                                      - 流控
+        flag  { C: CWR, E: ECE, U: Urgent, A: Ack, P: Push, R: Reset, S: Syn, F: Fin }  - 操控状态机
+        checksum { checksum(IP Header + TCP Header) }                                   - ???
 
-    常说的性质( 特性 )
-        1. 面向连接的, 可靠 ( seq 不乱序, ack 应答, 超时无应答则 retry 等机制 )
-        2. 有流量控制       ( slide window )
-        3. 拥塞控制         ( 慢启动, 拥塞窗口, 快速重传, 快速恢复 )
-        4. 全双工通信
-        5. 面向字节流, 点对点( 一对一 ) TODO: 这个东西该怎么理解???
+        TCP Options
+            0: End of Options List
+            1: Nop
+            2: MSS( Maximum segment size )
+            3: Window Scale
+            4: Sack ( Selective ACK ok )
+            8: Timestamp
 
-    状态
-        SYN_RECV, ESTABLISHED, TIME_WAIT
+常说的性质( 特性 )
+    1. 面向连接的, 可靠 ( seq 不乱序, ack 应答, 超时无应答则 retry 等机制 )
+    2. 有流量控制       ( slide window )
+    3. 拥塞控制         ( 慢启动, 拥塞窗口, 快速重传, 快速恢复 )
+    4. 全双工通信
+    5. 面向字节流, 点对点( 一对一 ) TODO: 这个东西该怎么理解???
 
-        * 主动关闭
-            发送:FIN -> FIN_WAIT_1
-            +- 接收:ACK -> FIN_WAIT_2；                     接收:FIN、发送:ACK
-            +- 接收:FIN、发送: ACK -> CLOSING( 同时关闭 )   接收:ACK
-            +- 接收:FIN-ACK、发送: ACK
-                +- TIME_WAIT(2MSL超时)                                              <---
-                    +- CLOSED
-        * 被动关闭
-            接收:FIN、发送: ACK -> CLOSE_WAIT
-            +- 发送:FIN -> LAST_ACK
-                +- 接收:ACK -> CLOSED
+状态
+    SYN_RECV, ESTABLISHED, TIME_WAIT
 
-    Flag
-        SYN, ACK, PUSH, ECN, FIN, RST
+    * 主动关闭
+        发送:FIN -> FIN_WAIT_1
+        +- 接收:ACK -> FIN_WAIT_2；                     接收:FIN、发送:ACK
+        +- 接收:FIN、发送: ACK -> CLOSING( 同时关闭 )   接收:ACK
+        +- 接收:FIN-ACK、发送: ACK
+            +- TIME_WAIT(2MSL超时)                                              <---
+                +- CLOSED
+    * 被动关闭
+        接收:FIN、发送: ACK -> CLOSE_WAIT
+        +- 发送:FIN -> LAST_ACK
+            +- 接收:ACK -> CLOSED
 
-    操作 + Flag + 状态 + value
-        关闭
-            { close / shutdown } -> { FIN / RST } -> { TIME_WAIT( 2msl ) / CLOSE_WAIT }
+Flag
+    SYN, ACK, PUSH, ECN, FIN, RST
+
+操作 + Flag + 状态 + value
+    关闭
+        { close / shutdown } -> { FIN / RST } -> { TIME_WAIT( 2msl ) / CLOSE_WAIT }
 
 ### keyword
 
