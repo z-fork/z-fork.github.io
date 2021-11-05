@@ -113,9 +113,9 @@ tcp_orphan_retries, tcp_max_orphans
 拥塞窗口 { 慢启动、拥塞避免、快速重传、快速恢复 }
 ~~~
 
-## interpret
+### interpret
 
-### MTU - 最大传输单元
+##### MTU - 最大传输单元
 
 MTU 作用在数据链路层(Data Link, Frame size), TCP 处于链路层之上, 所以也受限于 MTU 大小限制
 ~~~
