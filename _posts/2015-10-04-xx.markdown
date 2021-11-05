@@ -7,51 +7,52 @@ tags:
 
 ### intro
 
-Header
-
+##### Header
 ~~~ nohighlight
-    +---------------------------+---------------------------+ ---------------
-    |           src port        |           dst port        |   ^         ^
-    +---------------------------+---------------------------+
-    |                       seq number                      |        
-    +---------------------------+---------------------------+        
-    |                       ack number                      | 20 Bytes
-    +---------------------------+---------------------------+
-    | offset | reserved | flags |           window          |          offset
-    +---------------------------+---------------------------+
-    |           checksum        |       urgent pointer      |   v     
-    +---------------------------+---------------------------+  ---    
-    |                       tcp options                     |             v
-    +---------------------------+---------------------------+----------------
++---------------------------+---------------------------+----------------
+|           src port        |           dst port        |   ^         ^
++---------------------------+---------------------------+
+|                       seq number                      |        
++---------------------------+---------------------------+        
+|                       ack number                      | 20 Bytes
++---------------------------+---------------------------+
+| offset | reserved | flags |           window          |          offset
++---------------------------+---------------------------+
+|           checksum        |       urgent pointer      |   v     
++---------------------------+---------------------------+  ---    
+|                       tcp options                     |             v
++---------------------------+---------------------------+----------------
 
-    * TCP 没包含 IP, IP 是 IP 层的事情, TCP 在网络 OSI 的七层模型中
-        TCP             - 第四层 Transport层    -- Segment  ( src_port, dst_port )
-        IP              - 第三层 Network层      -- Packet   ( src_ip, dst_ip )
-        Ethernet / ARP  - 第二层 Data Link层    -- Frame
+* TCP 没包含 IP, IP 是 IP 层的事情, TCP 在网络 OSI 的七层模型中
+    TCP             - 第四层 Transport层    -- Segment  ( src_port, dst_port )
+    IP              - 第三层 Network层      -- Packet   ( src_ip, dst_ip )
+    Ethernet / ARP  - 第二层 Data Link层    -- Frame
 
-    * TCP Header
-        src_port, dst_port; + ( IP Header) src_ip, dst_ip                               - 表示唯一 TCP/IP 连接
-        seq number                                                                      - 网络包乱序
-        ack number                                                                      - 丢包
-        window / advertised-window                                                      - 流控
-        flag  { C: CWR, E: ECE, U: Urgent, A: Ack, P: Push, R: Reset, S: Syn, F: Fin }  - 操控状态机
-        checksum { checksum(IP Header + TCP Header) }                                   - ???
-        Options
-            0: End of Options List
-            1: Nop
-            2: MSS( Maximum segment size )
-            3: Window Scale
-            4: Sack ( Selective ACK ok )
-            8: Timestamp
-
-常说的性质( 特性 )
-    1. 面向连接的, 可靠 ( seq 不乱序, ack 应答, 超时无应答则 retry 等机制 )
-    2. 有流量控制       ( slide window )
-    3. 拥塞控制         ( 慢启动, 拥塞窗口, 快速重传, 快速恢复 )
-    4. 全双工通信
-    5. 面向字节流, 点对点( 一对一 ) TODO: 这个东西该怎么理解???
-
-状态
+* TCP Header
+    src_port, dst_port; + ( IP Header) src_ip, dst_ip                               - 表示唯一 TCP/IP 连接
+    seq number                                                                      - 网络包乱序
+    ack number                                                                      - 丢包
+    window / advertised-window                                                      - 流控
+    flag  { C: CWR, E: ECE, U: Urgent, A: Ack, P: Push, R: Reset, S: Syn, F: Fin }  - 操控状态机
+    checksum { checksum(IP Header + TCP Header) }                                   - ???
+    Options
+        0: End of Options List
+        1: Nop
+        2: MSS( Maximum segment size )
+        3: Window Scale
+        4: Sack ( Selective ACK ok )
+        8: Timestamp
+~~~
+##### 性质
+~~~ nohighlight
+1. 面向连接的, 可靠 ( seq 不乱序, ack 应答, 超时无应答则 retry 等机制 )
+2. 有流量控制       ( slide window )
+3. 拥塞控制         ( 慢启动, 拥塞窗口, 快速重传, 快速恢复 )
+4. 全双工通信
+5. 面向字节流, 点对点( 一对一 ) 
+~~~
+##### 状态
+~~~ nohighlight
     SYN_RECV, ESTABLISHED, TIME_WAIT
 
     * 主动关闭
@@ -66,79 +67,80 @@ Header
         +- 发送:FIN -> LAST_ACK
             +- 接收:ACK -> CLOSED
 
-Flag
-    SYN, ACK, PUSH, ECN, FIN, RST
-
-操作 + Flag + 状态 + value
-    关闭
-        { close / shutdown } -> { FIN / RST } -> { TIME_WAIT( 2msl ) / CLOSE_WAIT }
+    操作 + Flag + 状态 + value
+        关闭
+            { close / shutdown } -> { FIN / RST } -> { TIME_WAIT( 2msl ) / CLOSE_WAIT }
 ~~~
-
 ### keyword
-
+##### value
 ~~~ nohighlight
-    value:
-        MTU, MSS, MSL, TTL, RTO, RTT, BDP
-    params:
-        connect:
-            tcp_max_syn_backlog, somaxconn, tcp_abort_on_overflow, tcp_syncookies, tcp_defer_accept, tcp_fastopen
-        send / recv:
-            tcp_adv_win_scale, tcp_moderate_rcvbuf, nagle, tcp_sack, tcp_ecn, tcp_slow_start_after_idle
-        close/shutdown:
-            so_linger, tcp_max_tw_buckets, tcp_timestamps, tcp_tw_reuse, tcp_tw_recycle
-        timeout & retry:
-            tcp_synack_retries, tcp_retries1, tcp_fin_timeout
-        memory:
-            tcp_rmem, tcp_wmem, tcp_mem, rmem_default, wmem_default, rmem_max, wmem_max
-        other:
-            tcp_orphan_retries, tcp_max_orphans
-    methods:
-        关闭: close, shutdown
-        发送: tcp_sendmsg, tcp_write_queue, tcp_push
-        接收: tcp_v4_rcv
-    construct:
-        队列:
-            connect: syn 队列, accept 队列
-            recv:    receive 队列, out_of_order 队列, backlog 队列, prequeue 队列
-        滑动窗口
-        拥塞窗口 { 慢启动、拥塞避免、快速重传、快速恢复 }
+MTU, MSS, MSL, TTL, RTO, RTT, BDP
 ~~~
+##### params
+~~~ nohighlight
+tcp_max_syn_backlog, somaxconn, tcp_abort_on_overflow, tcp_syncookies, tcp_defer_accept, tcp_fastopen
 
+tcp_adv_win_scale, tcp_moderate_rcvbuf, nagle, tcp_sack, tcp_ecn, tcp_slow_start_after_idle
+            
+so_linger, tcp_max_tw_buckets, tcp_timestamps, tcp_tw_reuse, tcp_tw_recycle
+            
+tcp_synack_retries, tcp_retries1, tcp_fin_timeout
+            
+tcp_rmem, tcp_wmem, tcp_mem, rmem_default, wmem_default, rmem_max, wmem_max
+            
+tcp_orphan_retries, tcp_max_orphans
+~~~
+##### methods
+~~~ nohighlight
+关闭: close, shutdown
+发送: tcp_sendmsg, tcp_write_queue, tcp_push
+接收: tcp_v4_rcv
+~~~
+##### construct:
+~~~ nohighlight
+队列:
+    syn 队列, accept 队列
+    receive 队列, out_of_order 队列, backlog 队列, prequeue 队列
+滑动窗口
+拥塞窗口 { 慢启动、拥塞避免、快速重传、快速恢复 }
+~~~
 ### interpret
+##### MTU - 最大传输单元
+MTU 作用在数据链路层(Data Link, Frame size), TCP 处于链路层之上, 所以也受限于 MTU 大小限制
+~~~
+    以太网  1500字节
+    802.3   1492字节
+~~~
+报文中 IP 头部 16bit 表示 Packet 大小, 2^16-1 = 65535字节
+IP 层发送报文时, 若一个报文的长度大于 MTU 限制, 就会被分成若干个小于 MTU 的报文, 每个报文都会有独立的 IP 头部
+TCP 层在以太网中试图发送一个大于 1500字节的消息, 调用 IP网络层方法发送消息时, IP层会自动的获取所在局域网的MTU值, 并按照所在网络的 MTU 大小来分片
+IP层希望分片对于 TCP层来说是透明的, 接收方的 IP层会根据收到的多个IP包头部, 将发送方 IP层分片出的IP包重组为一个消息
+* IP层的分片效率是很差的,
+    1. 因为必须所有分片都到达才能重组成一个包; 2. 任何一个分片丢失了, 都必须重发所有分片
+
+##### MSS - 最大 Segment 段长度
+
+MSS：1460 = 1500 - 20 - 20；以太网的MTU为1500, 减去IP和TCP头部的长度,
+TCP 层会试图避免 IP 层执行数据报分片, TCP 协议定义了 MSS, 建立连接时, 连接双方都要互相告知自己期望接收到的 MSS 大小
+* write(userspace) -> tcp_sendmsg(kernel)
+    tcp_sendmsg 会根据对方告知的 MSS 来分片, 把消息氛围多个网络分组, 再调用 IP 层方法来发送
+* MSS 非固定, 避免中间网络可能出现的分片
+    在建立握手时告知对方期望接收的 MSS 值是预估的, 连接上可能有许多中间网络, 分别具有不同的数据链路层( 以太网, 802.3, ... MTU 都不同 )
+    通过 { IP头部的 DF标志位 }, 这个标志位是不要对 Packet 分片, Packet 需要分片则返回 ICMP错误 + 可接受的 MTU 值, 发送方就重新确定 MSS
+
+##### MSL ( Maximum Segment Lifetime )
+
+它定义了一个 Segment 在网络中的最长生存时间, Linux 系统中, MSL 的值固定为 30 秒
+* 2MSL - TIME_WAIT
+    TCP 是 ( src_ip, src_port, dst_ip, dst_port )四元组, port 有限 65535, 需要重用.
+    1. 防止收到历史数据, 从而导致数据错乱的问题
+        a. 旧的数据包被网络延迟, 通过 retry 的数据包完成整个逻辑
+        b. TCP 相同端口号连接重新建立, 旧的数据包到来, 发生错乱
+    2. 等待足够的时间以确保最后的 ACK 能让被动关闭方接收, 从而帮助其正常关闭
+        a. 当主动关闭端 FIN_WAIT_2 -> (发送 ACK) TIME_WAIT -> CLOSED；TIME_WAIT 过短/没有 ACK 丢失
+        b. TCP 相同端口号连接重新建立, 被动关闭端还处在 LAST_ACK, 导致直接 RST
 
 ~~~ nohighlight
-    MTU - 最大传输单元
-        MTU 作用在数据链路层(Data Link, Frame size), TCP 处于链路层之上, 所以也受限于 MTU
-        大小限制
-            以太网  1500字节
-            802.3   1492字节
-        报文中 IP 头部 16bit 表示 Packet 大小, 2^16-1 = 65535字节
-        IP 层发送报文时, 若一个报文的长度大于 MTU 限制, 就会被分成若干个小于 MTU 的报文, 每个报文都会有独立的 IP 头部
-        TCP 层在以太网中试图发送一个大于 1500字节的消息, 调用 IP网络层方法发送消息时, IP层会自动的获取所在局域网的MTU值, 并按照所在网络的 MTU 大小来分片
-        IP层希望分片对于 TCP层来说是透明的, 接收方的 IP层会根据收到的多个IP包头部, 将发送方 IP层分片出的IP包重组为一个消息
-        * IP层的分片效率是很差的,
-            1. 因为必须所有分片都到达才能重组成一个包; 2. 任何一个分片丢失了, 都必须重发所有分片
-
-    MSS - 最大 Segment 段长度
-        MSS：1460 = 1500 - 20 - 20；以太网的MTU为1500, 减去IP和TCP头部的长度,
-        TCP 层会试图避免 IP 层执行数据报分片, TCP 协议定义了 MSS, 建立连接时, 连接双方都要互相告知自己期望接收到的 MSS 大小
-        * write(userspace) -> tcp_sendmsg(kernel)
-            tcp_sendmsg 会根据对方告知的 MSS 来分片, 把消息氛围多个网络分组, 再调用 IP 层方法来发送
-        * MSS 非固定, 避免中间网络可能出现的分片
-            在建立握手时告知对方期望接收的 MSS 值是预估的, 连接上可能有许多中间网络, 分别具有不同的数据链路层( 以太网, 802.3, ... MTU 都不同 )
-            通过 { IP头部的 DF标志位 }, 这个标志位是不要对 Packet 分片, Packet 需要分片则返回 ICMP错误 + 可接受的 MTU 值, 发送方就重新确定 MSS
-
-    MSL ( Maximum Segment Lifetime )
-        它定义了一个 Segment 在网络中的最长生存时间, Linux 系统中, MSL 的值固定为 30 秒
-        * 2MSL - TIME_WAIT
-            TCP 是 ( src_ip, src_port, dst_ip, dst_port )四元组, port 有限 65535, 需要重用.
-            1. 防止收到历史数据, 从而导致数据错乱的问题
-                a. 旧的数据包被网络延迟, 通过 retry 的数据包完成整个逻辑
-                b. TCP 相同端口号连接重新建立, 旧的数据包到来, 发生错乱
-            2. 等待足够的时间以确保最后的 ACK 能让被动关闭方接收, 从而帮助其正常关闭
-                a. 当主动关闭端 FIN_WAIT_2 -> (发送 ACK) TIME_WAIT -> CLOSED；TIME_WAIT 过短/没有 ACK 丢失
-                b. TCP 相同端口号连接重新建立, 被动关闭端还处在 LAST_ACK, 导致直接 RST
-
     TTL
         报文每经过一次路由转发, IP 头部的 TTL 字段就会减1, 减到 0 时报文就被丢弃, 从而限制了报文的最长存活时间
 
@@ -597,6 +599,7 @@ Flag
     Q: 缓存的大小与TCP的滑动窗口到底有什么关系？
 
     Q: 滑动窗口缩小到0时, 怎么恢复?
+    Q: ECN, ECE
 ~~~
 
 ### case
