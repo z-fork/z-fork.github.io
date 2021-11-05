@@ -359,7 +359,7 @@ tcp 本身为全双工, close 意味着关闭读写
     b. 否则, 发送 FIN, 走正常 4 次挥手；因滑动窗口、拥塞窗口、angle 算法等发完最后一个数据 + FIN / 单独发 FIN
     ~~~
 
-* 多进程/多线程
+* 多进程 or 多线程
     ~~~
     1. close 系统调用过程 sys_close -> filp_close -> fput -> ... -> sock_close ... inet_release -> tcp_close
         socket 也是作为 fd 形式存在, 也遵循 fd close, 判断 fd 引用计数( fput 函数中 )来进入后续真正关闭流程
@@ -380,7 +380,7 @@ close 仅提供直接关闭读写, 因双工, 通过 shutdown 支持单向关闭
     关闭读：仅把收到的消息丢弃, 记标记, 并不要求对方关闭写；read 等方法读不到任何数据
     关闭写：同 close, RST or FIN 来关闭
     ~~~
-* 多进程/多线程
+* 多进程 or 多线程
     ~~~
     1. shutdown 系统调用过程 sys_shutdown -> inet_shutdown -> tcp_shutdown
         直接对应 socket, 不走文件系统 fd 那套
