@@ -12,14 +12,14 @@ tags:
 +---------------------------+---------------------------+----------------
 |           src port        |           dst port        |   ^         ^
 +---------------------------+---------------------------+
-|                       seq number                      |        
-+---------------------------+---------------------------+        
+|                       seq number                      |
++---------------------------+---------------------------+
 |                       ack number                      | 20 Bytes
 +---------------------------+---------------------------+
 | offset | reserved | flags |           window          |          offset
 +---------------------------+---------------------------+
-|           checksum        |       urgent pointer      |   v     
-+---------------------------+---------------------------+  ---    
+|           checksum        |       urgent pointer      |   v
++---------------------------+---------------------------+  ---
 |                       tcp options                     |             v
 +---------------------------+---------------------------+----------------
 
@@ -29,12 +29,13 @@ tags:
     Ethernet / ARP  - 第二层 Data Link层    -- Frame
 
 * TCP Header
-    src_port, dst_port; + ( IP Header) src_ip, dst_ip                               - 表示唯一 TCP/IP 连接
-    seq number                                                                      - 网络包乱序
-    ack number                                                                      - 丢包
-    window / advertised-window                                                      - 流控
-    flag  { C: CWR, E: ECE, U: Urgent, A: Ack, P: Push, R: Reset, S: Syn, F: Fin }  - 操控状态机
-    checksum { checksum(IP Header + TCP Header) }                                   - ???
+    src_port, dst_port; + { IP Header: src_ip, dst_ip }     - 表示唯一 TCP/IP 连接
+    seq number                                              - 网络包乱序
+    ack number                                              - 丢包
+    adv-window                                              - 流控
+    checksum { checksum(IP Header + TCP Header) }           -
+    flag                                                    - 操控状态机
+      { C: CWR, E: ECE, U: Urgent, A: Ack, P: Push, R: Reset, S: Syn, F: Fin }
     Options
         0: End of Options List
         1: Nop
@@ -43,14 +44,16 @@ tags:
         4: Sack ( Selective ACK ok )
         8: Timestamp
 ~~~
+
 ##### 性质
 ~~~ nohighlight
 1. 面向连接的, 可靠 ( seq 不乱序, ack 应答, 超时无应答则 retry 等机制 )
 2. 有流量控制       ( slide window )
 3. 拥塞控制         ( 慢启动, 拥塞窗口, 快速重传, 快速恢复 )
 4. 全双工通信
-5. 面向字节流, 点对点( 一对一 ) 
+5. 面向字节流, 点对点( 一对一 )
 ~~~
+
 ##### 状态
 ~~~ nohighlight
     SYN_RECV, ESTABLISHED, TIME_WAIT
@@ -71,31 +74,36 @@ tags:
         关闭
             { close / shutdown } -> { FIN / RST } -> { TIME_WAIT( 2msl ) / CLOSE_WAIT }
 ~~~
+
 ### keyword
+
 ##### value
 ~~~ nohighlight
 MTU, MSS, MSL, TTL, RTO, RTT, BDP
 ~~~
+
 ##### params
 ~~~ nohighlight
 tcp_max_syn_backlog, somaxconn, tcp_abort_on_overflow, tcp_syncookies, tcp_defer_accept, tcp_fastopen
 
 tcp_adv_win_scale, tcp_moderate_rcvbuf, nagle, tcp_sack, tcp_ecn, tcp_slow_start_after_idle
-            
+
 so_linger, tcp_max_tw_buckets, tcp_timestamps, tcp_tw_reuse, tcp_tw_recycle
-            
+
 tcp_synack_retries, tcp_retries1, tcp_fin_timeout
-            
+
 tcp_rmem, tcp_wmem, tcp_mem, rmem_default, wmem_default, rmem_max, wmem_max
-            
+
 tcp_orphan_retries, tcp_max_orphans
 ~~~
+
 ##### methods
 ~~~ nohighlight
 关闭: close, shutdown
 发送: tcp_sendmsg, tcp_write_queue, tcp_push
 接收: tcp_v4_rcv
 ~~~
+
 ##### construct:
 ~~~ nohighlight
 队列:
@@ -104,8 +112,11 @@ tcp_orphan_retries, tcp_max_orphans
 滑动窗口
 拥塞窗口 { 慢启动、拥塞避免、快速重传、快速恢复 }
 ~~~
-### interpret
-##### MTU - 最大传输单元
+
+## interpret
+
+### MTU - 最大传输单元
+
 MTU 作用在数据链路层(Data Link, Frame size), TCP 处于链路层之上, 所以也受限于 MTU 大小限制
 ~~~
     以太网  1500字节
