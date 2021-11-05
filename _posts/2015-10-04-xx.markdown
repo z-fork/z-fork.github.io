@@ -342,6 +342,7 @@ tcp 本身为全双工, close 意味着关闭读写
     a. 若有收到还没处理消息( 已ACK, 未read ), RST 关闭
     b. 否则, 发送 FIN, 走正常 4 次挥手；因滑动窗口、拥塞窗口、angle 算法等顺续发完数据, 最后一个数据 + FIN / 单独发 FIN
 * 多进程/多线程
+
     1. close 系统调用过程 sys_close -> filp_close -> fput -> ... -> sock_close ... inet_release -> tcp_close
         socket 也是作为 fd 形式存在, 也遵循 fd close, 判断 fd 引用计数( fput 函数中 )来进入后续真正关闭流程
     2. 多进程 clone(CLONE_FILES) -> copy_files -> dup_fd
@@ -350,10 +351,10 @@ tcp 本身为全双工, close 意味着关闭读写
 ##### shutdown
 
 close 仅提供直接关闭读写, 因双工, 通过 shutdown 支持单向关闭
-1. LISTEN sock
+* LISTEN sock
     关闭读：同 close, 移除 keepalive 定时器, SYN 队列中半连接 RST 关闭
     关闭写：无意义
-2. ESTABLISHED sock
+* ESTABLISHED sock
     关闭读：仅把收到的消息丢弃, 记标记, 并不要求对方关闭写；read 等方法读不到任何数据
     关闭写：同 close, RST or FIN 来关闭
 * 多进程/多线程
@@ -362,210 +363,215 @@ close 仅提供直接关闭读写, 因双工, 通过 shutdown 支持单向关闭
 
 ##### tcp_sendmsg
 
-    把待发送数据, 按照 MSS 来划分成多个报文段, 以 sk_buff 结构放到这个TCP连接对应的 tcp_write_queue 发送队列中
+~~~
+把待发送数据, 按照 MSS 来划分成多个报文段, 以 sk_buff 结构放到这个TCP连接对应的 tcp_write_queue 发送队列中
 
-    tcp_sendmsg { sk_stream_wait_memory -> tcp_sendmsg }
-        +- tcp_push{tcp_cwnd_test -> tcp_snd_wnd_test -> tcp_nagle_test -> tcp_window_allows -> tcp_transmit_skb}
+tcp_sendmsg { sk_stream_wait_memory -> tcp_sendmsg }
+    +- tcp_push{tcp_cwnd_test -> tcp_snd_wnd_test -> tcp_nagle_test -> tcp_window_allows -> tcp_transmit_skb}
 
-    sk_stream_wait_memory
-        TCP 连接分配的内核缓存是有限的, 当没有缓存来复制待发送数据时, 调用此方法来等待滑动窗口移动, 释放出一些缓存出来
-        ( 收到ACK后, 不需要再缓存原来已经发送出的报文, 因为已经确认对方收到, 就不需要定时重发, 自然就释放缓存了 )
+sk_stream_wait_memory
+    TCP 连接分配的内核缓存是有限的, 当没有缓存来复制待发送数据时, 调用此方法来等待滑动窗口移动, 释放出一些缓存出来
+    ( 收到ACK后, 不需要再缓存原来已经发送出的报文, 因为已经确认对方收到, 就不需要定时重发, 自然就释放缓存了 )
 
-        wait_for_memory:
-            if (copied)
-                tcp_push(sk, tp, flags & ~MSG_MORE, mss_now, TCP_NAGLE_PUSH);
-            if ((err = sk_stream_wait_memory(sk, &timeo)) != 0)
-                goto do_error;
-        ...
-        timeo = sock_sndtimeo(sk, flags & MSG_DONTWAIT);
-        static inline long sock_sndtimeo(const struct sock *sk, int noblock)
-        {
-            return noblock ? 0 : sk->sk_sndtimeo;
-        }
-        * 对于 non-blocking 会直接返回, 并将 errno 为 EAGAIN
+    wait_for_memory:
+        if (copied)
+            tcp_push(sk, tp, flags & ~MSG_MORE, mss_now, TCP_NAGLE_PUSH);
+        if ((err = sk_stream_wait_memory(sk, &timeo)) != 0)
+            goto do_error;
+    ...
+    timeo = sock_sndtimeo(sk, flags & MSG_DONTWAIT);
+    static inline long sock_sndtimeo(const struct sock *sk, int noblock)
+    {
+        return noblock ? 0 : sk->sk_sndtimeo;
+    }
+    * 对于 non-blocking 会直接返回, 并将 errno 为 EAGAIN
+~~~
 
 ##### tcp_push
 
-    tcp_sendmsg{sk_stream_wait_memory -> tcp_sendmsg}
-        +- tcp_push{tcp_cwnd_test -> tcp_snd_wnd_test -> tcp_nagle_test -> tcp_window_allows -> tcp_transmit_skb}
+~~~
+tcp_sendmsg{sk_stream_wait_memory -> tcp_sendmsg}
+    +- tcp_push{tcp_cwnd_test -> tcp_snd_wnd_test -> tcp_nagle_test -> tcp_window_allows -> tcp_transmit_skb}
 
-    tcp_cwnd_test - 拥塞窗口
-        在 tcp_push发送消息时, 检查拥塞窗口, 飞行中的报文数要小于拥塞窗口个数( 多少个MSS的个数 )
+tcp_cwnd_test - 拥塞窗口
+    在 tcp_push发送消息时, 检查拥塞窗口, 飞行中的报文数要小于拥塞窗口个数( 多少个MSS的个数 )
 
-        cwnd 就是拥塞窗口, 它用来帮助慢启动的实现
+    cwnd 就是拥塞窗口, 它用来帮助慢启动的实现
 
-        慢启动算法：
-            握手时对方通告的窗口大小只表示对方接收TCP分组的能力, 不表示中间网络能够处理分组的能力
-            所以, 发送方请悠着点发, 确保网络非常通畅了后, 再按照对方通告窗口来发
+    慢启动算法：
+        握手时对方通告的窗口大小只表示对方接收TCP分组的能力, 不表示中间网络能够处理分组的能力
+        所以, 发送方请悠着点发, 确保网络非常通畅了后, 再按照对方通告窗口来发
 
-        连接刚建立时, 它实际上是一个MSS 每收到一个ACK, 拥塞窗口扩大一个MSS大小, 最大只能到对方通告的接收窗口大小
-        当然, 为了避免指数式增长, 拥塞窗口大小的增长会更慢一些, 是线性的平滑的增长过程
+    连接刚建立时, 它实际上是一个MSS 每收到一个ACK, 拥塞窗口扩大一个MSS大小, 最大只能到对方通告的接收窗口大小
+    当然, 为了避免指数式增长, 拥塞窗口大小的增长会更慢一些, 是线性的平滑的增长过程
 
-    tcp_snd_wnd_test - 滑动窗口限制
-        待发送的最大序号 ~ 已经发送最小的没被确认的序号 + 发送窗口大小
+tcp_snd_wnd_test - 滑动窗口限制
+    待发送的最大序号 ~ 已经发送最小的没被确认的序号 + 发送窗口大小
 
-    tcp_nagle_test
-        Nagle 算法
-            要求一个TCP连接上最多只能有一个发送出去还没被确认的小分组, 在该分组的确认到达之前不能发送其他的小分组
-        Nagle 算法的初衷是这样的：
-            应用进程调用发送方法时, 可能每次只发送小块数据, 对于整个网络的执行效率来说, 小的TCP报文会增加网络拥塞的可能,
-            因此, 如果有可能, 应该将相临的TCP报文合并成一个较大的TCP报文( 当然还是小于MSS的 )发送
+tcp_nagle_test
+    Nagle 算法
+        要求一个TCP连接上最多只能有一个发送出去还没被确认的小分组, 在该分组的确认到达之前不能发送其他的小分组
+    Nagle 算法的初衷是这样的：
+        应用进程调用发送方法时, 可能每次只发送小块数据, 对于整个网络的执行效率来说, 小的TCP报文会增加网络拥塞的可能,
+        因此, 如果有可能, 应该将相临的TCP报文合并成一个较大的TCP报文( 当然还是小于MSS的 )发送
 
-    tcp_window_allows
-        获取拥塞窗口与滑动窗口的最小长度, 检查待发送的数据是否超出：
+tcp_window_allows
+    获取拥塞窗口与滑动窗口的最小长度, 检查待发送的数据是否超出：
 
-    * 调用了IP层的方法返回后, 也未必就保证此时数据一定发送到网络中去了
+* 调用了IP层的方法返回后, 也未必就保证此时数据一定发送到网络中去了
+~~~
 
 ##### tcp_v4_rcv
 
-    * 使用阻塞socket, 调用recv等方法时flag标志位为0, 读取 socket 时没有发生进程睡眠
+~~~
+* 使用阻塞socket, 调用recv等方法时flag标志位为0, 读取 socket 时没有发生进程睡眠
 
-    当网卡接收到报文并判断为TCP协议后, 将会调用到内核的 tcp_v4_rcv 方法
-        |
-        |- 需要接收的报文序号是S1, 网卡上收到了S1-S2的报文, 这个报文直接插入到 receive 队列中
-        |- 需要接收的报文序号是S2, 但到来的报文是S3, 进入out_of_order 队列, 所有乱序的报文都会暂时放在这
-            |
-            |- 仍然没有进程来读取socket, 又来了我们期望的S2-S3报文, 直接进入receive队列 此时 out_of_order 队列非空
-                |
-                |- 每次 receive 队列插入报文时都会检查 out_of_order 队列 由于收到S2报文后, 期待的序号成为了S3,
-                    这样, out_of_order 队列里的报文S3报文将会移出本队列而插入到 receive 队列中( 由 tcp_ofo_queue 方法 )
-                    |
-                    |- 用户进程读取 socket 了, 先分配一块内存, 调用read或者recv等方法, 这个socket还可以配置其属性
-                        这里假定没有设置任何属性, 都使用默认值, 因此, 此时socket是阻塞式, 它的SO_RCVLOWAT是默认的1
-                        当然, recv这样的方法还会接收一个flag参数, 它可以设置为MSG_WAITALL、MSG_PEEK、MSG_TRUNC 等等,
-                        这里我们假定为最常用的0 进程调用了recv方法
-                        |
-    |-------------------|
+当网卡接收到报文并判断为TCP协议后, 将会调用到内核的 tcp_v4_rcv 方法
     |
-    |- 经过层层封装, 接收TCP消息最终一定会走到 tcp_recvmsg 方法
+    |- 需要接收的报文序号是S1, 网卡上收到了S1-S2的报文, 这个报文直接插入到 receive 队列中
+    |- 需要接收的报文序号是S2, 但到来的报文是S3, 进入out_of_order 队列, 所有乱序的报文都会暂时放在这
         |
-        |- lock socket；socket是可以被多进程同时使用的, 内核也会操作它,
-            而下面的代码都是核心的、操作数据的、有状态的代码, 不可以被重入的；
-            再有用户进程进来时拿不到锁就要休眠在这了 内核中断看到被锁住后也会做不同的处理
+        |- 仍然没有进程来读取socket, 又来了我们期望的S2-S3报文, 直接进入receive队列 此时 out_of_order 队列非空
             |
-            |- 此时 receive 队列准备好了3个报文 最上面的报文是S1-S2, 将它拷贝到用户态内存中
-                由于 flag 参数并没有携带 MSG_PEEK 这样的标志位, 因此, 再将S1-S2报文从 receive 队列的头部移除, 从内核态释放
-                反之, MSG_PEEK 标志位会导致 receive 队列不会删除报文 所以, MSG_PEEK 主要用于多进程读取同一套接字的情形
+            |- 每次 receive 队列插入报文时都会检查 out_of_order 队列 由于收到S2报文后, 期待的序号成为了S3,
+                这样, out_of_order 队列里的报文S3报文将会移出本队列而插入到 receive 队列中( 由 tcp_ofo_queue 方法 )
                 |
-                |- 拷贝S2-S3报文到用户态内存中 当然, 执行拷贝前都会检查用户态内存的剩余空间是否足以放下当前这个报文,
-                    不足以时会直接返回已经拷贝的字节数
+                |- 用户进程读取 socket 了, 先分配一块内存, 调用read或者recv等方法, 这个socket还可以配置其属性
+                    这里假定没有设置任何属性, 都使用默认值, 因此, 此时socket是阻塞式, 它的SO_RCVLOWAT是默认的1
+                    当然, recv这样的方法还会接收一个flag参数, 它可以设置为MSG_WAITALL、MSG_PEEK、MSG_TRUNC 等等,
+                    这里我们假定为最常用的0 进程调用了recv方法
                     |
-                    |- S3-S4 同上
+|-------------------|
+|
+|- 经过层层封装, 接收TCP消息最终一定会走到 tcp_recvmsg 方法
+    |
+    |- lock socket；socket是可以被多进程同时使用的, 内核也会操作它,
+        而下面的代码都是核心的、操作数据的、有状态的代码, 不可以被重入的；
+        再有用户进程进来时拿不到锁就要休眠在这了 内核中断看到被锁住后也会做不同的处理
+        |
+        |- 此时 receive 队列准备好了3个报文 最上面的报文是S1-S2, 将它拷贝到用户态内存中
+            由于 flag 参数并没有携带 MSG_PEEK 这样的标志位, 因此, 再将S1-S2报文从 receive 队列的头部移除, 从内核态释放
+            反之, MSG_PEEK 标志位会导致 receive 队列不会删除报文 所以, MSG_PEEK 主要用于多进程读取同一套接字的情形
+            |
+            |- 拷贝S2-S3报文到用户态内存中 当然, 执行拷贝前都会检查用户态内存的剩余空间是否足以放下当前这个报文,
+                不足以时会直接返回已经拷贝的字节数
+                |
+                |- S3-S4 同上
+                    |
+                    |- receive 队列空了, 此时会先来检查 SO_RCVLOWAT 这个阀值
+                        如果已经拷贝的字节数到现在还小于它, 那么可能导致进程会休眠, 等待拷贝更多的数据
+                        socket 使用的默认的SO_RCVLOWAT, 也就是1, 这表明, 只要读取到报文了, 就认为可以返回了
+                        再检查backlog 队列 backlog 队列是进程正在拷贝数据时, 网卡收到的报文会进这个队列
                         |
-                        |- receive 队列空了, 此时会先来检查 SO_RCVLOWAT 这个阀值
-                            如果已经拷贝的字节数到现在还小于它, 那么可能导致进程会休眠, 等待拷贝更多的数据
-                            socket 使用的默认的SO_RCVLOWAT, 也就是1, 这表明, 只要读取到报文了, 就认为可以返回了
-                            再检查backlog 队列 backlog 队列是进程正在拷贝数据时, 网卡收到的报文会进这个队列
+                        |- backlog 队列是没有数据的, 已经拷贝的字节数大于1的, 因此, 释放第7步里加的锁, 准备返回用户态
+                        |
+|-----------------------|
+|
+|- 用户进程代码开始执行, 此时recv等方法返回的就是S4-S1, 即从内核拷贝的字节数
+
+* 用户进程调用recv方法时, 连接上没有任何接收 & 缓存到内核的报文, 而socket是阻塞的, 所以进程睡眠了
+
+最终调用到 tcp_recvmsg 方法来处理
+    |
+    |- lock socket；同上
+        |
+        |- 由于此时 receive 队列、prequeue 队列、backlog 队列都是空的, 即没有拷贝1个字节的消息到用户内存中,
+            而我们的最低要求是拷贝至少 SO_RCVLOWAT 为1长度的消息 此时, 开始进入阻塞式套接字的等待流程
+            最长等待时间为 SO_RCVTIMEO 指定的时间
+            睡眠前会调用 sk_wait_data 执行 release_sock, 释放socket锁, 使得新到的报文不再只能进入 backlog 队列
+            |
+|---------|
+|
+|- 当网卡接收到报文并判断为TCP协议后, 将会调用到内核的 tcp_v4_rcv 方法
+    |
+    |- 需要接收的报文序号是S1, 网卡上收到了S1-S2的报文, 通过调用 tcp_prequeue 方法把报文插入到 prequeue 队列中
+        |
+        |-插入 prequeue队列后, 此时会接着调用 wake_up_interruptible 方法, 唤醒在socket上睡眠的进程
+            |
+            |- 用户进程被唤醒后, 重新调用lock_sock接管了这个socket, 此后再进来的报文都只能进入backlog队列了
+                |
+                |- 进程醒来后, 先去检查 receive队列, 当然仍然是空的；
+                    再去检查 prequeue队列, 发现有一个报文S1-S2, 正好是socket连接待拷贝的起始序号S1,
+                    从 prequeue队列中取出这个报文并把内容复制到用户内存中, 再释放内核中的这个报文
+                    |
+                    |- 目前已经拷贝了S2-S1个字节到用户态, 检查这个长度是否超过了最低阀值( SO_RCVLOWAT的最小值 )
+                        |
+                        |- 由于SO_RCVLOWAT使用了默认的1, 所以准备返回用户
+                            此时会顺带再看看 backlog队列, 检查这个无序的队列中是否有可以直接拷贝给用户的报文, 此时是没有
+                            准备返回, 释放socket锁
                             |
-                            |- backlog 队列是没有数据的, 已经拷贝的字节数大于1的, 因此, 释放第7步里加的锁, 准备返回用户态
-                                |
-    |-----------------------|
-    |
-    |- 用户进程代码开始执行, 此时recv等方法返回的就是S4-S1, 即从内核拷贝的字节数
+                            |- 返回用户已经拷贝的字节数
 
-    * 用户进程调用recv方法时, 连接上没有任何接收 & 缓存到内核的报文, 而socket是阻塞的, 所以进程睡眠了
+* 我们把系统参数 tcp_low_latency 设为1, socket上设置了SO_RCVLOWAT属性的值 服务器先是收到了S1-S2这个报文,
+    但S2-S1的长度是小于SO_RCVLOWAT的, 用户进程调用recv方法时, 虽然读到了一些, 但没有达到最小阀值, 所以进程睡眠了,
+    与此同时, 在睡眠前收到的乱序的S3-S4包直接进入backlog队列
+    此时先到达了S2-S3包, 由于没有使用prequeue队列, 而它起始序号正是下一个待拷贝的值, 所以直接拷贝到用户内存中,
+    总共拷贝字节数已满足SO_RCVLOWAT的要求！最后在返回用户前把backlog队列中S3-S4报文也拷贝给用户了
 
-    最终调用到 tcp_recvmsg 方法来处理
-        |
-        |- lock socket；同上
-            |
-            |- 由于此时 receive 队列、prequeue 队列、backlog 队列都是空的, 即没有拷贝1个字节的消息到用户内存中,
-                而我们的最低要求是拷贝至少 SO_RCVLOWAT 为1长度的消息 此时, 开始进入阻塞式套接字的等待流程
-                最长等待时间为 SO_RCVTIMEO 指定的时间
-                睡眠前会调用 sk_wait_data 执行 release_sock, 释放socket锁, 使得新到的报文不再只能进入 backlog 队列
-                |
-    |---------|
+当网卡接收到报文并判断为TCP协议后, 将会调用到内核的 tcp_v4_rcv 方法
     |
-    |- 当网卡接收到报文并判断为TCP协议后, 将会调用到内核的 tcp_v4_rcv 方法
+    |- 需要接收的报文序号是S1, 网卡上收到了S1-S2的报文, 这个报文直接插入到 receive 队列中
         |
-        |- 需要接收的报文序号是S1, 网卡上收到了S1-S2的报文, 通过调用 tcp_prequeue 方法把报文插入到 prequeue 队列中
+        |- 用户进程调用了recv方法接收socket上的消息, socket上设置了SO_RCVLOWAT属性为某个值n, 这个n是大于S2-S1,
+|-----------|
+|
+|- 经过层层封装, 接收TCP消息最终一定会走到 tcp_recvmsg 方法
+    |
+    |- lock socket；
+        |
+        |- receive队列中的有序报文可直接拷贝, 在检查到S2-S1是小于len之后, 将报文内容拷贝到用户态内存中
             |
-            |-插入 prequeue队列后, 此时会接着调用 wake_up_interruptible 方法, 唤醒在socket上睡眠的进程
+            |- 同时socket是被锁住的, 这时又收到了一个S3-S4报文, 因此进入backlog队列
+                注意, 这个报文不是有序的, 因为此时连接上期待接收序号为S2
                 |
-                |- 用户进程被唤醒后, 重新调用lock_sock接管了这个socket, 此后再进来的报文都只能进入backlog队列了
-                    |
-                    |- 进程醒来后, 先去检查 receive队列, 当然仍然是空的；
-                        再去检查 prequeue队列, 发现有一个报文S1-S2, 正好是socket连接待拷贝的起始序号S1,
-                        从 prequeue队列中取出这个报文并把内容复制到用户内存中, 再释放内核中的这个报文
+                |- 拷贝了S2-S1个字节到用户内存, 它是小于SO_RCVLOWAT的, 由于socket是阻塞型套接字( 超时时间在本文中忽略 ),
+                    进程将不得不转入睡眠 转入睡眠之前, 还会干一件事, 就是处理 backlog队列里的报文,
+                    睡眠前会调用 sk_wait_data 执行 release_sock, 同 case 2, 额外, 此时 backlog 非空
                         |
-                        |- 目前已经拷贝了S2-S1个字节到用户态, 检查这个长度是否超过了最低阀值( SO_RCVLOWAT的最小值 )
+                        |- 遍历 backlog队列, S3-S4报文因为它是失序的, 所以从 backlog队列中移入out_of_order队列中
                             |
-                            |- 由于SO_RCVLOWAT使用了默认的1, 所以准备返回用户
-                                此时会顺带再看看 backlog队列, 检查这个无序的队列中是否有可以直接拷贝给用户的报文, 此时是没有
-                                准备返回, 释放socket锁
+                            |- 进程休眠, 直到超时或者receive队列不为空
                                 |
-                                |- 返回用户已经拷贝的字节数
-
-    * 我们把系统参数 tcp_low_latency 设为1, socket上设置了SO_RCVLOWAT属性的值 服务器先是收到了S1-S2这个报文,
-        但S2-S1的长度是小于SO_RCVLOWAT的, 用户进程调用recv方法时, 虽然读到了一些, 但没有达到最小阀值, 所以进程睡眠了,
-        与此同时, 在睡眠前收到的乱序的S3-S4包直接进入backlog队列
-        此时先到达了S2-S3包, 由于没有使用prequeue队列, 而它起始序号正是下一个待拷贝的值, 所以直接拷贝到用户内存中,
-        总共拷贝字节数已满足SO_RCVLOWAT的要求！最后在返回用户前把backlog队列中S3-S4报文也拷贝给用户了
-
-    当网卡接收到报文并判断为TCP协议后, 将会调用到内核的 tcp_v4_rcv 方法
-        |
-        |- 需要接收的报文序号是S1, 网卡上收到了S1-S2的报文, 这个报文直接插入到 receive 队列中
-            |
-            |- 用户进程调用了recv方法接收socket上的消息, socket上设置了SO_RCVLOWAT属性为某个值n, 这个n是大于S2-S1,
-                |
-    |-----------|
++-----------------------------+
+|
+|- 内核接收到了S2-S3报文 注意, 这里由于打开了tcp_low_latency标志位, 这个报文是不会进入 prequeue队列
     |
-    |- 经过层层封装, 接收TCP消息最终一定会走到 tcp_recvmsg 方法
+    +- 由于S2是连接上正要接收的序号, 同时, 有一个用户进程正在休眠等待接收数据中,
+        且它要等待的数据起始序号正是S2, 于是, 使得网络软中断执行上下文中, 把S2-S3报文直接拷贝进用户内存
         |
-        |- lock socket；
+        +- 每处理完1个有序报文( 无论是拷贝到receive队列还是直接复制到用户内存 )后都会检查out_of_order队列,
+            看看是否有报文可以处理 S3-S4报文恰好是待处理的, 于是拷贝进用户内存 然后唤醒用户进程
             |
-            |- receive队列中的有序报文可直接拷贝, 在检查到S2-S1是小于len之后, 将报文内容拷贝到用户态内存中
+            +- 用户进程被唤醒了, 当然唤醒后会先来拿到socket锁 以下执行又在进程上下文中了
                 |
-                |- 同时socket是被锁住的, 这时又收到了一个S3-S4报文, 因此进入backlog队列
-                    注意, 这个报文不是有序的, 因为此时连接上期待接收序号为S2
+                +- 此时会检查已拷贝的字节数是否大于SO_RCVLOWAT, 以及backlog队列是否为空, 两者皆满足, 准备返回, 释放socket锁
                     |
-                    |- 拷贝了S2-S1个字节到用户内存, 它是小于SO_RCVLOWAT的, 由于socket是阻塞型套接字( 超时时间在本文中忽略 ),
-                        进程将不得不转入睡眠 转入睡眠之前, 还会干一件事, 就是处理 backlog队列里的报文,
-                        睡眠前会调用 sk_wait_data 执行 release_sock, 同 case 2, 额外, 此时 backlog 非空
-                            |
-                            |- 遍历 backlog队列, S3-S4报文因为它是失序的, 所以从 backlog队列中移入out_of_order队列中
-                                |
-                                |- 进程休眠, 直到超时或者receive队列不为空
-                                    |
-    +-----------------------------+
+                    +- 返回用户已经复制的字节数S4-S1
+
+tcp_v4_rcv
+    +- tcp_prequeue
+        +- tcp_low_latency: 0；进入 prequeue 队列
+        |   +- Done
+        +- tcp_low_latency: 1；
+            +- tcp_v4_do_rcv
+                +- tcp_rcv_established
+                    +- tcp_data_queue
+                        +- tcp_ofo_queue
+
+tcp_recvmsg
     |
-    |- 内核接收到了S2-S3报文 注意, 这里由于打开了tcp_low_latency标志位, 这个报文是不会进入 prequeue队列
-        |
-        +- 由于S2是连接上正要接收的序号, 同时, 有一个用户进程正在休眠等待接收数据中,
-            且它要等待的数据起始序号正是S2, 于是, 使得网络软中断执行上下文中, 把S2-S3报文直接拷贝进用户内存
-            |
-            +- 每处理完1个有序报文( 无论是拷贝到receive队列还是直接复制到用户内存 )后都会检查out_of_order队列,
-                看看是否有报文可以处理 S3-S4报文恰好是待处理的, 于是拷贝进用户内存 然后唤醒用户进程
-                |
-                +- 用户进程被唤醒了, 当然唤醒后会先来拿到socket锁 以下执行又在进程上下文中了
-                    |
-                    +- 此时会检查已拷贝的字节数是否大于SO_RCVLOWAT, 以及backlog队列是否为空, 两者皆满足, 准备返回, 释放socket锁
-                        |
-                        +- 返回用户已经复制的字节数S4-S1
+    |- sock_rcvtimeo & nonblock
+    |- sock_rcvlowat(sk, flags & MSG_WAITALL, len)  # 用户态内存大小len 和 SO_RCVLOWAT 的最小值
+    |- if (!(flags & MSG_TRUNC))                    # MSG_TRUNC 标志位表示不要管len这个用户态内存有多大, 只管拷贝数据
+    |- sk_wait_data
+    |- release_sock
 
-    tcp_v4_rcv
-        +- tcp_prequeue
-            +- tcp_low_latency: 0；进入 prequeue 队列
-            |   +- Done
-            +- tcp_low_latency: 1；
-                +- tcp_v4_do_rcv
-                    +- tcp_rcv_established
-                        +- tcp_data_queue
-                            +- tcp_ofo_queue
+tcp_low_latency
+    1：服务器希望TCP进程能够更及时的接收到TCP消息
 
-    tcp_recvmsg
-        |
-        |- sock_rcvtimeo & nonblock
-        |- sock_rcvlowat(sk, flags & MSG_WAITALL, len)  # 用户态内存大小len 和 SO_RCVLOWAT 的最小值
-        |- if (!(flags & MSG_TRUNC))                    # MSG_TRUNC 标志位表示不要管len这个用户态内存有多大, 只管拷贝数据
-        |- sk_wait_data
-        |- release_sock
-
-    tcp_low_latency
-        1：服务器希望TCP进程能够更及时的接收到TCP消息
-
-    receive 队列
-        允许用户进程直接读取的, 它是将已经接收到的TCP报文, 去除了TCP头部、排好序放入的、用户进程可以直接按序读取
+receive 队列
+    允许用户进程直接读取的, 它是将已经接收到的TCP报文, 去除了TCP头部、排好序放入的、用户进程可以直接按序读取
+~~~
 
 ##### 拥塞窗口
 
@@ -585,121 +591,132 @@ close 仅提供直接关闭读写, 因双工, 通过 shutdown 支持单向关闭
 ### Q
 
 ~~~ nohighlight
-    Q: TCP如何保证可靠传输；
-        主要通过 checksum, seq number, ack, 超时重传, 流量控制, 拥塞控制 { 慢启动, 拥塞窗口, 快速重传, 快速恢复 }
+Q: TCP如何保证可靠传输；
+    主要通过 checksum, seq number, ack, 超时重传, 流量控制, 拥塞控制 { 慢启动, 拥塞窗口, 快速重传, 快速恢复 }
 
-    Q: 3次握手; 1. 为什么是 3次?    2. 主要做了什么, 可以达到什么目的?                  { exp-1 }
-        1. tcp 中使用 req / ack 模式, 被动方 ack/req 合并, 一共3次. 通过 ack 可达及重试防丢包
-        2. 初始化 seq { ISN: initial sequence number }, 交换 header, 涉及
-            a. 双方同步 seq { SYN: synchronize sequence number }, window    - tcp headers
-            b. mss, sack, ecr, wscale, timestamp, ...                       - tcp options
+Q: 3次握手; 1. 为什么是 3次?    2. 主要做了什么, 可以达到什么目的?                  { exp-1 }
+    1. tcp 中使用 req / ack 模式, 被动方 ack/req 合并, 一共3次. 通过 ack 可达及重试防丢包
+    2. 初始化 seq { ISN: initial sequence number }, 交换 header, 涉及
+        a. 双方同步 seq { SYN: synchronize sequence number }, window    - tcp headers
+        b. mss, sack, ecr, wscale, timestamp, ...                       - tcp options
 
-    Q: 4次挥手; 1. 为什么是 4次?    2. 主要做了什么, 可以达到什么目的?                  { exp-2 }
-        1. 并不一定是 4次, 一方主动关闭, 另一方被动关闭时才是3-4次, 双方同步关闭是 2次.
-        2. tcp 全双工, 收到 fin 时, 不能一定 ack / fin 合并返回, 因滑动窗口、拥塞窗口、angle 算法等顺序发送数据, 可能 push + fin, 也可能单独 fin
+Q: 4次挥手; 1. 为什么是 4次?    2. 主要做了什么, 可以达到什么目的?                  { exp-2 }
+    1. 并不一定是 4次, 一方主动关闭, 另一方被动关闭时才是3-4次, 双方同步关闭是 2次.
+    2. tcp 全双工, 收到 fin 时, 不能一定 ack / fin 合并返回, 因滑动窗口、拥塞窗口、angle 算法等顺序发送数据, 可能 push + fin, 也可能单独 fin
 
-    Q: 什么时候触发 RST ?
-        close:
-            server - (listen sock), syn 队列中的半连接 RST. ( accept 队列 发送 fin )
-            client - (establised sock), 已 ack, 未 recv 读 RST. ( 否则, 正常4次挥手, 因 slide win, 拥塞, angle算法等可能 push + fin / fin )
-        shutdown:
-            server - shutdown read: 同 close server
-            client - shutdown write: 同 close client
-        param:
-            tcp_abort_on_overflow, accept 队列满时 RST.
+Q: 什么时候触发 RST ?
+    close:
+        server - (listen sock), syn 队列中的半连接 RST. ( accept 队列 发送 fin )
+        client - (establised sock), 已 ack, 未 recv 读 RST. ( 否则, 正常4次挥手, 因 slide win, 拥塞, angle算法等可能 push + fin / fin )
+    shutdown:
+        server - shutdown read: 同 close server
+        client - shutdown write: 同 close client
+    param:
+        tcp_abort_on_overflow, accept 队列满时 RST.
 
-    Q: 最大读缓存到底应该设置到多少为合适呢？
-        BDP ~ mem + tcp_adv_win_scale
-        当窗口过大时, 对于网络负载来说过大, 就会对网络设备引发恶性循环, 不断的造成丢包; 而窗口过小时, 就无法充分的利用网络资源
-        BDP 就表示了网络承载能力, 最大接收窗口就表示了可以不经确认发出的报文
+Q: 最大读缓存到底应该设置到多少为合适呢？
+    BDP ~ mem + tcp_adv_win_scale
+    当窗口过大时, 对于网络负载来说过大, 就会对网络设备引发恶性循环, 不断的造成丢包; 而窗口过小时, 就无法充分的利用网络资源
+    BDP 就表示了网络承载能力, 最大接收窗口就表示了可以不经确认发出的报文
 
-    Q: TCP拥塞中的慢重传算法；
-        慢开始算法的思路就是, 不要一开始就发送大量的数据, 先探测一下网络的拥塞程度, 也就是说由小到大逐渐增加拥塞窗口的大小
+Q: TCP拥塞中的慢重传算法；
+    慢开始算法的思路就是, 不要一开始就发送大量的数据, 先探测一下网络的拥塞程度, 也就是说由小到大逐渐增加拥塞窗口的大小
 
-    Q: close_wait, time_wait状态原因
-        close_wait: 被动关闭, ( 可以recv EOF, 这时需要主动 close conn, 当然 recv后处理过长, cli 超时close, 处理过后write 会 RST 使其close )
-        time_wait:  主动关闭, fin -> ack,fin -> ack 之后会保持 time_wait 状态 2MSL, 对丢包的 retry 等情况可以正常处理
-        * 服务端处理过长且对 conn 未及时关闭 close_wait 过多 ( 异常现象, 需要 fix bugs )
-        * http/1.x not keepalive 服务端主动关闭, time_wait 过多 ( 正常现象, 通过 timestamp + reuse 等方式优化 )
+Q: close_wait, time_wait状态原因
+    close_wait: 被动关闭, ( 可以recv EOF, 这时需要主动 close conn, 当然 recv后处理过长, cli 超时close, 处理过后write 会 RST 使其close )
+    time_wait:  主动关闭, fin -> ack,fin -> ack 之后会保持 time_wait 状态 2MSL, 对丢包的 retry 等情况可以正常处理
+    * 服务端处理过长且对 conn 未及时关闭 close_wait 过多 ( 异常现象, 需要 fix bugs )
+    * http/1.x not keepalive 服务端主动关闭, time_wait 过多 ( 正常现象, 通过 timestamp + reuse 等方式优化 )
 
-    Q: 为什么建立连接协议是三次握手, 而关闭连接却是四次握手呢？
-    Q: 为什么 TIME_WAIT 状态还需要等 2MSL 后才能返回到 CLOSED 状态？
+Q: 为什么建立连接协议是三次握手, 而关闭连接却是四次握手呢？
+Q: 为什么 TIME_WAIT 状态还需要等 2MSL 后才能返回到 CLOSED 状态？
 
-    Q: 对于监听 socket 执行关闭, 和对处于 ESTABLISH 这种通讯的 socket 执行关闭, 有何区别？
-    Q: 当 socket 被多进程或者多线程共享时, 关闭连接时有何区别？
+Q: 对于监听 socket 执行关闭, 和对处于 ESTABLISH 这种通讯的 socket 执行关闭, 有何区别？
+Q: 当 socket 被多进程或者多线程共享时, 关闭连接时有何区别？
 
-    Q: 关连接时, 若连接上有来自对端的还未处理的消息, 会怎么处理？               (rst)
-    Q: 关连接时, 若连接上有本进程待发送却未来得及发送出的消息, 又会怎么处理？
-    Q: so_linger 这个功能的用处在哪？
+Q: 关连接时, 若连接上有来自对端的还未处理的消息, 会怎么处理？               (rst)
+Q: 关连接时, 若连接上有本进程待发送却未来得及发送出的消息, 又会怎么处理？
+Q: so_linger 这个功能的用处在哪？
 
-    Q: 发送方法成功返回时, 能保证TCP另一端的主机接收到吗？
-    Q: 能保证数据已经发送到网络上了吗？
-    Q: 套接字为阻塞或者非阻塞时, 发送方法做的事情有何不同？
+Q: 发送方法成功返回时, 能保证TCP另一端的主机接收到吗？
+Q: 能保证数据已经发送到网络上了吗？
+Q: 套接字为阻塞或者非阻塞时, 发送方法做的事情有何不同？
 
-    Q: 应用程序调用read、recv等方法时, socket 可以设置为阻塞或者非阻塞, 这两种方式是如何工作的？
-    Q: 若socket为默认的阻塞, 此时recv方法传入的len参数, 是表示超时( SO_RCVTIMEO )或者接收到len长度的消息, recv方法才会返回？
-       而且, socket上可以设置一个属性叫做SO_RCVLOWAT, 它会与len产生什么样的交集, 又是决定recv等接收方法什么时候返回？
-    Q: 应用程序开始收取TCP消息, 与程序所在的机器网卡上接收到网络里发来的TCP消息, 这是两个独立的流程 它们之间是如何互相影响的？
-       例如, 应用程序正在收取消息时, 内核通过网卡又在这条TCP连接上收到消息时, 究竟是如何处理的？
-       若应用程序没有调用read或者recv时, 内核收到TCP连接上的消息后又是怎样处理的？
-    Q: recv这样的接收方法还可以传入各种flags, 例如MSG_WAITALL、MSG_PEEK、MSG_TRUNC 等等 它们是如何工作的？
-    Q: 1个socket套接字可能被多个进程在使用, 出现并发访问时, 内核是怎么处理这种状况的？
-    Q: linux的sysctl系统参数中, 有类似tcp_low_latency这样的开关, 默认为0或者配置为1时是如何影响TCP消息处理流程的？
+Q: 应用程序调用read、recv等方法时, socket 可以设置为阻塞或者非阻塞, 这两种方式是如何工作的？
+Q: 若socket为默认的阻塞, 此时recv方法传入的len参数, 是表示超时( SO_RCVTIMEO )或者接收到len长度的消息, recv方法才会返回？
+    而且, socket上可以设置一个属性叫做SO_RCVLOWAT, 它会与len产生什么样的交集, 又是决定recv等接收方法什么时候返回？
+Q: 应用程序开始收取TCP消息, 与程序所在的机器网卡上接收到网络里发来的TCP消息, 这是两个独立的流程 它们之间是如何互相影响的？
+    例如, 应用程序正在收取消息时, 内核通过网卡又在这条TCP连接上收到消息时, 究竟是如何处理的？
+    若应用程序没有调用read或者recv时, 内核收到TCP连接上的消息后又是怎样处理的？
+Q: recv这样的接收方法还可以传入各种flags, 例如MSG_WAITALL、MSG_PEEK、MSG_TRUNC 等等 它们是如何工作的？
+Q: 1个socket套接字可能被多个进程在使用, 出现并发访问时, 内核是怎么处理这种状况的？
+Q: linux的sysctl系统参数中, 有类似tcp_low_latency这样的开关, 默认为0或者配置为1时是如何影响TCP消息处理流程的？
 
-    Q: tcp_rmem[2] 和 rmem_max 似乎都跟接收缓存最大值有关, 但它们却可以不一致, 究竟有什么区别？
-    Q: tcp_wmem[1]和wmem_default似乎都表示发送缓存的默认值, 冲突了怎么办？
-    Q: 在用抓包软件抓到的syn握手包里, 为什么TCP接收窗口大小似乎与这些配置完全没关系？
-    Q: 缓存上限是什么？
-    Q: 缓存的大小与TCP的滑动窗口到底有什么关系？
+Q: tcp_rmem[2] 和 rmem_max 似乎都跟接收缓存最大值有关, 但它们却可以不一致, 究竟有什么区别？
+Q: tcp_wmem[1]和wmem_default似乎都表示发送缓存的默认值, 冲突了怎么办？
+Q: 在用抓包软件抓到的syn握手包里, 为什么TCP接收窗口大小似乎与这些配置完全没关系？
+Q: 缓存上限是什么？
+Q: 缓存的大小与TCP的滑动窗口到底有什么关系？
 
-    Q: 滑动窗口缩小到0时, 怎么恢复?
-    Q: ECN, ECE
+Q: 滑动窗口缩小到0时, 怎么恢复?
+Q: ECN, ECE
 ~~~
 
 ### case
 
 ~~~ nohighlight
-    TIME_WAIT - timestamp + reuse
+TIME_WAIT - timestamp + reuse
 
-        a. 四次挥手中的最后一次 ACK 在网络中丢失了, 服务端一直处于 LAST_ACK 状态；
-        b. 客户端由于开启了 tcp_tw_reuse 功能, 客户端再次发起新连接的时候, 会复用超过 1 秒后的 time_wait 状态的连接
-            但客户端新发的 SYN 包会被忽略( 由于时间戳 ), 因为服务端比较了客户端的上一个报文与 SYN 报文的时间戳,
-            过期的报文就会被服务端丢弃；
-        c. 服务端 FIN 报文迟迟没有收到四次挥手的最后一次 ACK, 于是超时重发了 FIN 报文给客户端；
-        d. 处于 SYN_SENT 状态的客户端, 由于收到了 FIN 报文, 则会回 RST 给服务端, 于是服务端就离开了 LAST_ACK 状态；
-        e. 最初的客户端 SYN 报文超时重发了(  1 秒钟后 ), 此时就与服务端能正确的三次握手了
+    a. 四次挥手中的最后一次 ACK 在网络中丢失了, 服务端一直处于 LAST_ACK 状态；
+    b. 客户端由于开启了 tcp_tw_reuse 功能, 客户端再次发起新连接的时候, 会复用超过 1 秒后的 time_wait 状态的连接
+        但客户端新发的 SYN 包会被忽略( 由于时间戳 ), 因为服务端比较了客户端的上一个报文与 SYN 报文的时间戳,
+        过期的报文就会被服务端丢弃；
+    c. 服务端 FIN 报文迟迟没有收到四次挥手的最后一次 ACK, 于是超时重发了 FIN 报文给客户端；
+    d. 处于 SYN_SENT 状态的客户端, 由于收到了 FIN 报文, 则会回 RST 给服务端, 于是服务端就离开了 LAST_ACK 状态；
+    e. 最初的客户端 SYN 报文超时重发了(  1 秒钟后 ), 此时就与服务端能正确的三次握手了
 
-        * 可以在复用了 time_wait 状态的 1 秒过后成功建立连接, 这 1 秒主要是花费在 SYN 包重传
+    * 可以在复用了 time_wait 状态的 1 秒过后成功建立连接, 这 1 秒主要是花费在 SYN 包重传
 ~~~
 
 ### exp
 
-~~~ nohighlight
-    exp-1
-        $ tcpdump -i any port 5001 -nn -S
-            IP1.58308 > IP2.5001:  Flags [S], seq 1424909309, win 65535, options [mss 1460,nop,wscale 5,nop,nop,TS val 3841599958 ecr 0,sackOK,eol], length 0
-            IP2.5001  > IP1.58308: Flags [S.], seq 1568863893, ack 1424909310, win 28960, options [mss 1460,sackOK,TS val 344115119 ecr 3841599958,nop,wscale 7], length 0
+##### exp-1
 
-    exp-2
-        $ tcpdump -i any port 5001 -nn -S
-        $ nc -l 5001 / $ nc 127.0.0.1 5001 / $ netstat -atn | grep 5001
+~~~
+$ tcpdump -i any port 5001 -nn -S
+    IP1.58308 > IP2.5001:  Flags [S], seq 1424909309, win 65535, options [mss 1460,nop,wscale 5,nop,nop,TS val 3841599958 ecr 0,sackOK,eol], length 0
+    IP2.5001  > IP1.58308: Flags [S.], seq 1568863893, ack 1424909310, win 28960, options [mss 1460,sackOK,TS val 344115119 ecr 3841599958,nop,wscale 7], length 0
+~~~
 
-    exp-3
-        $ ss -ltn
-        State   Recv-Q   Send-Q     Local Address:Port      Peer Address:Port  Process
-        LISTEN  0        3                0.0.0.0:5001           0.0.0.0:*
-        Recv-Q：当前 accept 队列的大小, 已三次握手并等待服务端 accept() 的 TCP 连接
-        Send-Q：accept 队列最大长度, 上面监听 5001 端口的 TCP 服务, accept 队列的最大长度为 3
+##### exp-2
+~~~
+$ tcpdump -i any port 5001 -nn -S
+$ nc -l 5001 / $ nc 127.0.0.1 5001 / $ netstat -atn | grep 5001
+~~~
 
-    exp-4
-        $ netstat -s | grep 'SYNs to LISTEN'
-            28642 SYNs to LISTEN sockets dropped
+##### exp-3
+~~~
+$ ss -ltn
+    State   Recv-Q   Send-Q     Local Address:Port      Peer Address:Port  Process
+    LISTEN  0        3                0.0.0.0:5001           0.0.0.0:*
+    Recv-Q：当前 accept 队列的大小, 已三次握手并等待服务端 accept() 的 TCP 连接
+    Send-Q：accept 队列最大长度, 上面监听 5001 端口的 TCP 服务, accept 队列的最大长度为 3
+~~~
 
-    exp-5
-        nginx.conf
-        listen 80 deferred;
+##### exp-4
+~~~
+$ netstat -s | grep 'SYNs to LISTEN'
+    28642 SYNs to LISTEN sockets dropped
+~~~
 
-    exp-6
-        $ netstat -s | grep 'overflowed'
-            22589 times the listen queue of a socket overflowed
+##### exp-5
+~~~
+// nginx.conf
+    listen 80 deferred;
+~~~
+
+##### exp-6
+~~~
+$ netstat -s | grep 'overflowed'
+    22589 times the listen queue of a socket overflowed
 ~~~
