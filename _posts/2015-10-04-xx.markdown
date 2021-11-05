@@ -5,9 +5,9 @@ tags:
 - tcp
 ---
 
-### intro
+### Intro
 
-##### Header
+##### header
 ~~~ nohighlight
 +---------------------------+---------------------------+----------------
 |           src port        |           dst port        |   ^         ^
@@ -56,23 +56,23 @@ tags:
 
 ##### 状态
 ~~~ nohighlight
-    SYN_RECV, ESTABLISHED, TIME_WAIT
+SYN_RECV, ESTABLISHED, TIME_WAIT
 
-    * 主动关闭
-        发送:FIN -> FIN_WAIT_1
-        +- 接收:ACK -> FIN_WAIT_2；                     接收:FIN、发送:ACK
-        +- 接收:FIN、发送: ACK -> CLOSING( 同时关闭 )   接收:ACK
-        +- 接收:FIN-ACK、发送: ACK
-            +- TIME_WAIT(2MSL超时)                                              <---
-                +- CLOSED
-    * 被动关闭
-        接收:FIN、发送: ACK -> CLOSE_WAIT
-        +- 发送:FIN -> LAST_ACK
-            +- 接收:ACK -> CLOSED
+* 主动关闭
+    发送:FIN -> FIN_WAIT_1
+    +- 接收:ACK -> FIN_WAIT_2；                     接收:FIN、发送:ACK
+    +- 接收:FIN、发送: ACK -> CLOSING( 同时关闭 )   接收:ACK
+    +- 接收:FIN-ACK、发送: ACK
+        +- TIME_WAIT(2MSL超时)
+            +- CLOSED
+* 被动关闭
+    接收:FIN、发送: ACK -> CLOSE_WAIT
+    +- 发送:FIN -> LAST_ACK
+        +- 接收:ACK -> CLOSED
 
-    操作 + Flag + 状态 + value
-        关闭
-            { close / shutdown } -> { FIN / RST } -> { TIME_WAIT( 2msl ) / CLOSE_WAIT }
+操作 + Flag + 状态 + value
+    关闭
+        { close / shutdown } -> { FIN / RST } -> { TIME_WAIT( 2msl ) / CLOSE_WAIT }
 ~~~
 
 ### keyword
@@ -124,94 +124,110 @@ MTU 作用在数据链路层(Data Link, Frame size), TCP 处于链路层之上, 
 ~~~
 报文中 IP 头部 16bit 表示 Packet 大小, 2^16-1 = 65535字节
 
-IP 层发送 Packet 时, Packet 的大小受 MTU 限制, 会被分成若干个小于 MTU 的报文, 每个 Packet 都会有**独立的 IP Header**.
-TCP 层在发送一个大于 1500 字节的消息, 调用 IP 层方法发送时, IP 层会自动的获取所在网络的 MTU, 并按照所在网络的 MTU 大小来分片.
+TCP 层在发送一个大于 1500 字节的消息, 调用 IP 层方法发送时, IP 层会自动的获取所在网络的 MTU, 并按照所在网络的 MTU 大小来分片,
+会被分成若干个小于 MTU 的 Packet, 每个 Packet 都会有**独立的 IP Header**.
+
 IP 层希望**分片**对于 TCP 层来说是**透明**的, 接收方的 IP 层会根据收到的多个 IP 包头部, 将分片的 Packet 重组为一个 Segment
-
-`IP层的分片效率是很差`
-
-- 因为必须所有分片都到达才能重组成一个包
-- 任何一个分片丢失了, 都必须重发所有分片
+~~~
+IP层的分片效率是很差
+    因为必须所有分片都到达才能重组成一个包
+    任何一个分片丢失了, 都必须重发所有分片
+~~~
 
 ##### MSS - 最大 Segment 段长度
 
-MSS：1460 = 1500 - 20 - 20；以太网的MTU为1500, 减去IP和TCP头部的长度,
-TCP 层会试图避免 IP 层执行数据报分片, TCP 协议定义了 MSS, 建立连接时, 连接双方都要互相告知自己期望接收到的 MSS 大小
-* write(userspace) -> tcp_sendmsg(kernel)
-    tcp_sendmsg 会根据对方告知的 MSS 来分片, 把消息氛围多个网络分组, 再调用 IP 层方法来发送
-* MSS 非固定, 避免中间网络可能出现的分片
-    在建立握手时告知对方期望接收的 MSS 值是预估的, 连接上可能有许多中间网络, 分别具有不同的数据链路层( 以太网, 802.3, ... MTU 都不同 )
-    通过 { IP头部的 DF标志位 }, 这个标志位是不要对 Packet 分片, Packet 需要分片则返回 ICMP错误 + 可接受的 MTU 值, 发送方就重新确定 MSS
+MSS 1460 = 1500 - 20 - 20；以太网的 MTU 为 1500, 减去 IP 和 TCP Header 的长度
+
+TCP 层会试图避免 IP 层执行数据报分片, TCP 协议定义了 MSS, 建立连接时, 连接双方都要互相告知自己期望接收到的 MSS 大小,
+会根据对方告知的 MSS 来分片, 把消息分为多个 Segment, 再调用 IP 层方法来发送
+
+在建立握手时告知对方期望接收的 MSS 值是预估的, 连接上可能有许多中间网络, 分别具有不同的数据链路层( 以太网, 802.3, ... MTU 都不同 )
+通过 { IP头部的 DF标志位 }, 这个标志位是不要对 Packet 分片, Packet 需要分片则返回 ICMP错误 + 可接受的 MTU 值, 发送方就重新确定 MSS
 
 ##### MSL ( Maximum Segment Lifetime )
 
 它定义了一个 Segment 在网络中的最长生存时间, Linux 系统中, MSL 的值固定为 30 秒
-* 2MSL - TIME_WAIT
-    TCP 是 ( src_ip, src_port, dst_ip, dst_port )四元组, port 有限 65535, 需要重用.
-    1. 防止收到历史数据, 从而导致数据错乱的问题
-        a. 旧的数据包被网络延迟, 通过 retry 的数据包完成整个逻辑
-        b. TCP 相同端口号连接重新建立, 旧的数据包到来, 发生错乱
-    2. 等待足够的时间以确保最后的 ACK 能让被动关闭方接收, 从而帮助其正常关闭
-        a. 当主动关闭端 FIN_WAIT_2 -> (发送 ACK) TIME_WAIT -> CLOSED；TIME_WAIT 过短/没有 ACK 丢失
-        b. TCP 相同端口号连接重新建立, 被动关闭端还处在 LAST_ACK, 导致直接 RST
 
-~~~ nohighlight
-    TTL
-        报文每经过一次路由转发, IP 头部的 TTL 字段就会减1, 减到 0 时报文就被丢弃, 从而限制了报文的最长存活时间
+`2MSL - TIME_WAIT`
+* 防止收到历史数据, 从而导致数据错乱的问题
+    ~~~
+    a. 旧的数据包被网络延迟, 通过 retry 的数据包完成整个逻辑
+    b. TCP 相同端口号连接重新建立, 旧的数据包到来, 发生错乱
+    ~~~
+* 等待足够的时间以确保最后的 ACK 能让被动关闭方接收, 从而帮助其正常关闭
+    ~~~
+    a. 当主动关闭端 FIN_WAIT_2 -> (发送 ACK) TIME_WAIT -> CLOSED；TIME_WAIT 过短/没有 ACK 丢失
+    b. TCP 相同端口号连接重新建立, 被动关闭端还处在 LAST_ACK, 导致直接 RST
+    ~~~
 
-    RTO
-        重试间隔? TODO: ...
+##### TTL
 
-    RTT
-        网络延时
+报文每经过一次路由转发, IP 头部的 TTL 字段就会减1, 减到 0 时报文就被丢弃, 从而限制了报文的最长存活时间
 
-    BDP - 带宽时延积( Bandwidth Delay Product )
-        最大带宽是 100 MB/s, 网络时延( RTT )是 10ms 时, 意味着客户端到服务端的网络一共可以存放 100MB/s * 0.01s = 1MB 的字节
-        这个 1MB 是带宽和时延的乘积叫 BDP, 同时, 这 1MB 也表示「飞行中」的 TCP 报文大小, 它们就在网络线路、路由器等网络设备中
+##### RTO
 
-    params:
-        /proc/sys/net/ipv4/tcp_max_syn_backlog
-        /proc/sys/net/core/somaxconn
-        /proc/sys/net/ipv4/tcp_syncookies               # 0 关闭该功能; 2 无条件开启功能; 1 仅当 SYN 半连接队列放不下时, 再启用它
-        /proc/sys/net/ipv4/tcp_abort_on_overflow        # 0 表示关闭该功能; 1 表示开启功能, 返回 RST
-        /proc/sys/net/ipv4/tcp_fastopen                 # 0 关闭; 1 客户端使用 FastOpen; 2 服务端使用 FastOpen; 3 客户端/服务器都使用 FastOpen
+重试间隔? TODO: ...
 
-        net.ipv4.tcp_adv_win_scale                      # 滑动窗口比例 1 / 2^tcp_adv_win_scale
-        net.ipv4.tcp_moderate_rcvbuf = 1                # 1：表示打开了tcp内存自动调整功能; 0：这个功能将不会生效( 慎用 )
+##### RTT
 
-        net.ipv4.tcp_slow_start_after_idle = 0          # 关闭tcp的连接传输的慢启动, 即先休止一段时间, 再初始化拥塞窗口
-        net.ipv4.tcp_ecn = 0                            # 把TCP的直接拥塞通告(tcp_ecn)关掉
-        net.ipv4.tcp_sack = 1                           # 启用 sack 通过有选择地应答乱序接收到的报文来提高性能, 但是这会增加对 CPU 的占用
+网络延时
 
-        /proc/sys/net/ipv4/tcp_max_tw_buckets
-        /proc/sys/net/ipv4/tcp_timestamps               # 1 打开时间戳, 默认值 1
-        /proc/sys/net/ipv4/tcp_tw_reuse                 # 1 打开 tcp_tw_reuse 功能
-        /proc/sys/net/ipv4/tcp_tw_recycle               # deprecated on Linux 4.12
+##### BDP - 带宽时延积( Bandwidth Delay Product )
 
-        /proc/sys/net/core/wmem_default                 # tcp连接分配内核缓存
+最大带宽是 100 MB/s, 网络时延( RTT )是 10ms 时, 意味着客户端到服务端的网络一共可以存放 100MB/s * 0.01s = 1MB 的字节
 
-        net.ipv4.tcp_rmem = 8192 87380 16777216
-        net.ipv4.tcp_wmem = 8192 65536 16777216
-        net.ipv4.tcp_mem = 8388608 12582912 16777216
+这个 1MB 是带宽和时延的乘积叫 BDP, 同时, 这 1MB 也表示「飞行中」的 TCP 报文大小, 它们就在网络线路、路由器等网络设备中
 
-        net.ipv4.ip_local_port_range = 1024 65000       # 表示用于向外连接的端口范围 缺省情况下很小：32768到61000, 改为1024到65000
-        net.ipv4.netfilter.ip_conntrack_max=204800      # 设置系统对最大跟踪的TCP连接数的限制
-        net.ipv4.route.gc_timeout = 100                 # 路由缓存刷新频率, 当一个路由失败后多长时间跳到另一个路由, 默认是300
-        net.core.netdev_max_backlog                     #
+### params
 
-    tcp_max_syn_backlog
-        服务端建立连接时, SYN_RECV (SYN 队列) -> ESTABLISHED (ACCEPT 队列) 过程中, SYN_RECV 所处状态为"半连接"
-        deprecated! 早的内核控制 SYN 队列, 参考 source 1 与实际内核版本, 关注 goto drop & drop_and_free 情景
+~~~nohighlight
+/proc/sys/net/ipv4/tcp_max_syn_backlog
+/proc/sys/net/core/somaxconn
+/proc/sys/net/ipv4/tcp_syncookies               # 0 关闭该功能; 2 无条件开启功能; 1 仅当 SYN 半连接队列放不下时, 再启用它
+/proc/sys/net/ipv4/tcp_abort_on_overflow        # 0 表示关闭该功能; 1 表示开启功能, 返回 RST
+/proc/sys/net/ipv4/tcp_fastopen                 # 0 关闭; 1 客户端使用 FastOpen; 2 服务端使用 FastOpen; 3 客户端/服务器都使用 FastOpen
 
-    somaxconn               { exp-3 }
-        服务端建立连接时, SYN_RECV (SYN 队列) -> ESTABLISHED (ACCEPT 队列) 过程中, ESTABLISHED 所处状态为"全连接"
-        listen backlog (数值上相关, 并不是相等, 具体看内核对应处理)
+net.ipv4.tcp_adv_win_scale                      # 滑动窗口比例 1 / 2^tcp_adv_win_scale
+net.ipv4.tcp_moderate_rcvbuf = 1                # 1：表示打开了tcp内存自动调整功能; 0：这个功能将不会生效( 慎用 )
 
-    tcp_syncookies          { exp-4  }      - syn 队列塞满
-        正常情况下, SYN 队列大小与 ACCEPT 队列大小相关, 在 SYN flood 攻击等, 非正常占满 SYN 队列情况下, 开启 tcp_syncookies 不影响正常请求建立连接.
-        服务端建立连接时, SYN 队列已满, 启用 tcp_syncookies 机制后, 不会 drop/abort 而是计算一个值随 SYN+ACK 返回, 当 cli 返回 ACK 报文时, 取值验证来建立连接
-        * 这种方式建立的连接, 许多 TCP 特性都无法使用 ( 少了 syn 过程, 依赖 seq number 的流控, 丢包重传都无效了)
+net.ipv4.tcp_slow_start_after_idle = 0          # 关闭tcp的连接传输的慢启动, 即先休止一段时间, 再初始化拥塞窗口
+net.ipv4.tcp_ecn = 0                            # 把TCP的直接拥塞通告(tcp_ecn)关掉
+net.ipv4.tcp_sack = 1                           # 启用 sack 通过有选择地应答乱序接收到的报文来提高性能, 但是这会增加对 CPU 的占用
 
+/proc/sys/net/ipv4/tcp_max_tw_buckets
+/proc/sys/net/ipv4/tcp_timestamps               # 1 打开时间戳, 默认值 1
+/proc/sys/net/ipv4/tcp_tw_reuse                 # 1 打开 tcp_tw_reuse 功能
+/proc/sys/net/ipv4/tcp_tw_recycle               # deprecated on Linux 4.12
+
+/proc/sys/net/core/wmem_default                 # tcp连接分配内核缓存
+
+net.ipv4.tcp_rmem = 8192 87380 16777216
+net.ipv4.tcp_wmem = 8192 65536 16777216
+net.ipv4.tcp_mem = 8388608 12582912 16777216
+
+net.ipv4.ip_local_port_range = 1024 65000       # 表示用于向外连接的端口范围 缺省情况下很小：32768到61000, 改为1024到65000
+net.ipv4.netfilter.ip_conntrack_max=204800      # 设置系统对最大跟踪的TCP连接数的限制
+net.ipv4.route.gc_timeout = 100                 # 路由缓存刷新频率, 当一个路由失败后多长时间跳到另一个路由, 默认是300
+net.core.netdev_max_backlog                     #
+~~~
+
+##### tcp_max_syn_backlog
+
+服务端建立连接时, SYN_RECV (SYN 队列) -> ESTABLISHED (ACCEPT 队列) 过程中, SYN_RECV 所处状态为"半连接"
+deprecated! 早的内核控制 SYN 队列, 参考 source 1 与实际内核版本, 关注 goto drop & drop_and_free 情景
+
+##### somaxconn               { exp-3 }
+
+服务端建立连接时, SYN_RECV (SYN 队列) -> ESTABLISHED (ACCEPT 队列) 过程中, ESTABLISHED 所处状态为"全连接"
+listen backlog (数值上相关, 并不是相等, 具体看内核对应处理)
+
+##### tcp_syncookies          { exp-4  }      - syn 队列塞满
+
+正常情况下, SYN 队列大小与 ACCEPT 队列大小相关, 在 SYN flood 攻击等, 非正常占满 SYN 队列情况下, 开启 tcp_syncookies 不影响正常请求建立连接.
+服务端建立连接时, SYN 队列已满, 启用 tcp_syncookies 机制后, 不会 drop/abort 而是计算一个值随 SYN+ACK 返回, 当 cli 返回 ACK 报文时, 取值验证来建立连接
+* 这种方式建立的连接, 许多 TCP 特性都无法使用 ( 少了 syn 过程, 依赖 seq number 的流控, 丢包重传都无效了)
+
+~~~nohighlight
     tcp_defer_accept        { exp-5 }       - accept 队列塞满
         客户端设置后, 握手过程中 ack + DATA 合并发送 tcpdump 中 [P.]
         服务端设置后, 忽略握手 ack, 延迟到有 DATA 才会接收, 在一定程度上缓解了 TCP 全连接攻击, 避免无数据 conn 入 ACCEPT 队列
