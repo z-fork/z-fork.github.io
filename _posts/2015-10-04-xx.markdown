@@ -346,7 +346,6 @@ TCP整体内存的无压力值、压力模式开启阀值、最大使用值
 ##### close
 
 tcp 本身为全双工, close 意味着关闭读写
-
 * LISTEN sock
 
     移除 keepalive 定时器, SYN 队列中半连接 RST 关闭
