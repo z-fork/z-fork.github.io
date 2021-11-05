@@ -23,7 +23,7 @@ tags:
 |                       tcp options                     |             v
 +---------------------------+---------------------------+----------------
 
-* TCP 没包含 IP, IP 是 IP 层的事情, TCP 在网络 OSI 的七层模型中
+* TCP 在网络 OSI 的七层模型中
     TCP             - 第四层 Transport层    -- Segment  ( src_port, dst_port )
     IP              - 第三层 Network层      -- Packet   ( src_ip, dst_ip )
     Ethernet / ARP  - 第二层 Data Link层    -- Frame

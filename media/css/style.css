@@ -59,7 +59,13 @@ code {
   font-family: Fira Mono, monospace; }
 
 h1, h2 {
-  font-size: 1.8em; }
+  font-size: 1.9em; }
+
+h4, 3 {
+  font-size: 1.5em; }
+
+h5 {
+  font-size: 1.1em; }
 
 time {
   font-family: Ubuntu, monospace; }
@@ -141,7 +147,7 @@ ul.listing {
 article {
   margin: 2em 0; }
   article p {
-    padding: .2em 0; }
+    padding: .0em 0;}
   article .title {
     font-family: telexregular, Hiragino Sans GB, Microsoft YaHei, sans-serif; }
     article .title header #header h1 a, header #header h1 article .title a, article .title a, article .title .meta .tags a, article .meta .tags .title a {
