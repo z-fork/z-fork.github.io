@@ -350,39 +350,39 @@ TCP整体内存的无压力值、压力模式开启阀值、最大使用值
 
 tcp 本身为全双工, close 意味着关闭读写
 * LISTEN sock
-    ~~~
-    移除 keepalive 定时器, SYN 队列中半连接 RST 关闭
-    ~~~
+~~~
+移除 keepalive 定时器, SYN 队列中半连接 RST 关闭
+~~~
 * ESTABLISHED sock
-    ~~~
-    a. 若有收到还没处理消息( 已ACK, 未read ), RST 关闭
-    b. 否则, 发送 FIN, 走正常 4 次挥手；因滑动窗口、拥塞窗口、angle 算法等发完最后一个数据 + FIN / 单独发 FIN
-    ~~~
+~~~
+a. 若有收到还没处理消息( 已ACK, 未read ), RST 关闭
+b. 否则, 发送 FIN, 走正常 4 次挥手；因滑动窗口、拥塞窗口、angle 算法等发完最后一个数据 + FIN / 单独发 FIN
+~~~
 * 多进程 or 多线程
-    ~~~
-    1. close 系统调用过程 sys_close -> filp_close -> fput -> ... -> sock_close ... inet_release -> tcp_close
-        socket 也是作为 fd 形式存在, 也遵循 fd close, 判断 fd 引用计数( fput 函数中 )来进入后续真正关闭流程
-    2. 多进程 clone(CLONE_FILES) -> copy_files -> dup_fd
-        增加了 fd 的引用计数, 所以, 需要所有进程中关闭 socket fd 才真正关闭
-    ~~~
+~~~
+1. close 系统调用过程 sys_close -> filp_close -> fput -> ... -> sock_close ... inet_release -> tcp_close
+    socket 也是作为 fd 形式存在, 也遵循 fd close, 判断 fd 引用计数( fput 函数中 )来进入后续真正关闭流程
+2. 多进程 clone(CLONE_FILES) -> copy_files -> dup_fd
+    增加了 fd 的引用计数, 所以, 需要所有进程中关闭 socket fd 才真正关闭
+~~~
 
 ##### shutdown
 
 close 仅提供直接关闭读写, 因双工, 通过 shutdown 支持单向关闭
 * LISTEN sock
-    ~~~
-    关闭读：同 close, 移除 keepalive 定时器, SYN 队列中半连接 RST 关闭
-    关闭写：无意义
-    ~~~
+~~~
+关闭读：同 close, 移除 keepalive 定时器, SYN 队列中半连接 RST 关闭
+关闭写：无意义
+~~~
 * ESTABLISHED sock
-    ~~~
-    关闭读：仅把收到的消息丢弃, 记标记, 并不要求对方关闭写；read 等方法读不到任何数据
-    关闭写：同 close, RST or FIN 来关闭
-    ~~~
+~~~
+关闭读：仅把收到的消息丢弃, 记标记, 并不要求对方关闭写；read 等方法读不到任何数据
+关闭写：同 close, RST or FIN 来关闭
+~~~
 * 多进程 or 多线程
-    ~~~
-    shutdown 系统调用过程 sys_shutdown -> inet_shutdown -> tcp_shutdown, 直接对应 socket, 不走文件系统 fd 那套
-    ~~~
+~~~
+shutdown 系统调用过程 sys_shutdown -> inet_shutdown -> tcp_shutdown, 直接对应 socket, 不走文件系统 fd 那套
+~~~
 
 ##### tcp_sendmsg
 
